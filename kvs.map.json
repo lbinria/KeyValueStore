@@ -1,0 +1,324 @@
+{
+  "transactionPool":
+  {
+    "name":"tx",
+    "functions":
+    {
+      "add":
+      {
+        "name":"AddElement",
+        "input_schema":
+        {
+          "$id": "https://lbee.com/kvs.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "tx.add",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "output_schema":
+        {
+          "$id": "https://example.com/person.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "args",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "map_args": ["@{{$.0}}"]
+      },
+      "remove":
+      {
+        "name":"RemoveElement",
+        "input_schema":
+        {
+          "$id": "https://lbee.com/kvs.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "tx.add",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "output_schema":
+        {
+          "$id": "https://example.com/person.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "args",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "map_args": ["@{{$.0}}"]
+      }
+    }
+  },
+
+  "snapshot":
+  {
+    "name":"snapshotStore",
+    "functions":
+    {
+      "add":
+      {
+        "name":"SnapshotStoreAdd",
+        "input_schema":
+        {
+          "$id": "https://lbee.com/kvs.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "snapshotStore.add",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"},
+            {"type": "string"},
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "output_schema":
+        {
+          "$id": "https://example.com/person.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "args",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"},
+            {"type": "string"},
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "map_args": ["@{{$.0}}", "@{{$.1}}", "@{{$.2}}"]
+      },
+      "remove":
+      {
+        "name":"SnapshotStoreRemove",
+        "input_schema":
+        {
+          "$id": "https://lbee.com/kvs.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "snapshotStore.remove",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"},
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "output_schema":
+        {
+          "$id": "https://example.com/person.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "args",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"},
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "map_args": ["@{{$.0}}", "@{{$.1}}"]
+      }
+    }
+  },
+
+  "writtenLog":
+  {
+    "name":"written",
+    "functions":
+    {
+      "add":
+      {
+        "name":"LogAdd",
+        "input_schema":
+        {
+          "$id": "https://lbee.com/kvs.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "written.add",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"},
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "output_schema":
+        {
+          "$id": "https://example.com/person.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "args",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"},
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "map_args": ["@{{$.0}}", "@{{$.1}}"]
+      },
+      "addAll":
+      {
+        "name":"LogAddAll",
+        "input_schema":
+        {
+          "$id": "https://lbee.com/kvs.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "written.add",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"},
+            {"type": "array"}
+          ],
+          "items": false
+        },
+        "output_schema":
+        {
+          "$id": "https://example.com/person.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "args",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"},
+            {"type": "array"}
+          ],
+          "items": false
+        },
+        "map_args": ["@{{$.0}}", "@{{$.1}}"]
+      },
+      "clear":
+      {
+        "name":"LogClear",
+        "input_schema":
+        {
+          "$id": "https://lbee.com/kvs.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "written.clear",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "output_schema":
+        {
+          "$id": "https://example.com/person.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "args",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "map_args": ["@{{$.0}}"]
+      }
+    }
+  },
+
+  "missedLog":
+  {
+    "name":"missed",
+    "functions":
+    {
+      "missedUpdate":
+      {
+        "name":"MissedUpdate",
+        "input_schema":
+        {
+          "$id": "https://lbee.com/kvs.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "missed.add",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"},
+            {"type": "array"}
+          ],
+          "items": false
+        },
+        "output_schema":
+        {
+          "$id": "https://example.com/person.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "args",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"},
+            {"type": "array"}
+          ],
+          "items": false
+        },
+        "map_args": ["@{{$.0}}", "@{{$.1}}"]
+      },
+      "clear":
+      {
+        "name":"LogClear",
+        "input_schema":
+        {
+          "$id": "https://lbee.com/kvs.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "missed.clear",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "output_schema":
+        {
+          "$id": "https://example.com/person.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "args",
+          "type": "array",
+          "prefixItems": [
+            {"type": "string"}
+          ],
+          "items": false
+        },
+        "map_args": ["@{{$.0}}"]
+      }
+    }
+  },
+
+  "store":
+  {
+    "name":"store",
+    "functions":
+    {
+      "set":
+      {
+        "name":"StoreUpdate",
+        "input_schema":
+        {
+          "$id": "https://lbee.com/kvs.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "store.set",
+          "type": "array",
+          "prefixItems": [
+            {"type": "object"}
+          ],
+          "items": false
+        },
+        "output_schema":
+        {
+          "$id": "https://example.com/person.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "args",
+          "type": "array",
+          "prefixItems": [
+            {"type": "object"}
+          ],
+          "items": false
+        },
+        "map_args": ["@{{$.0}}"]
+      }
+    }
+  }
+
+}
