@@ -14,7 +14,7 @@ public class ConsistentStore {
     private final ArrayList<Transaction> transactionPool;
 
     private final TraceInstrumentation traceInstrumentation;
-    private final TrackedVariable trackedTransactionPool;
+    private final TrackedVariable<ArrayList<Transaction>> trackedTransactionPool;
 
     public ConsistentStore(TraceInstrumentation traceInstrumentation) {
         this(new HashMap<>(), traceInstrumentation);
@@ -30,18 +30,9 @@ public class ConsistentStore {
     public synchronized Transaction open(Client client) {
         Transaction tx = new Transaction(this, client);
         transactionPool.add(tx);
-        //trackedTransactionPool.change(transactionPool);
+        trackedTransactionPool.notifyChange(transactionPool);
 
-        try {
-            trackedTransactionPool.apply("add", tx.getGuid());
-//            // End of TLA action Open
-            traceInstrumentation.commit();
-//            traceInstrumentation.commitChanges();
-
-        } catch (TraceProducerException e) {
-            System.out.println(e.toString());
-            e.printStackTrace();
-        }
+        Helpers.tryCommit(traceInstrumentation);
 
         return tx;
     }
@@ -75,35 +66,17 @@ public class ConsistentStore {
 
         // Remove from pool
         transactionPool.remove(transaction);
-        // Notify
-//        trackedTransactionPool.change(transactionPool);
+        trackedTransactionPool.notifyChange(transactionPool);
 
-        try {
-            trackedTransactionPool.apply("remove", transaction.getGuid());
-            // End of TLA action Close
-            traceInstrumentation.commit();
-//            traceInstrumentation.commitChanges();
-        } catch (TraceProducerException e) {
-            System.out.println(e.toString());
-            e.printStackTrace();
-        }
+        Helpers.tryCommit(traceInstrumentation);
     }
 
     public void rollback(Transaction transaction) {
         // Just remove transaction from pool without commit
         transactionPool.remove(transaction);
-        // Notify
-//        trackedTransactionPool.change(transactionPool);
+        trackedTransactionPool.notifyChange(transactionPool);
 
-        try {
-            trackedTransactionPool.apply("remove", transaction.getGuid());
-            // End of TLA action Rollback
-            traceInstrumentation.commit();
-//            traceInstrumentation.commitChanges();
-        } catch (TraceProducerException e) {
-            System.out.println(e.toString());
-            e.printStackTrace();
-        }
+        Helpers.tryCommit(traceInstrumentation);
     }
 
     public long getNbOpenTransaction() {

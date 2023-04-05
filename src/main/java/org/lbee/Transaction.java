@@ -31,10 +31,10 @@ public class Transaction {
     private final long timeout = -1;
 
     private final TraceInstrumentation traceInstrumentation;
-    private final TrackedVariable trackedWrittenLog;
-    private final TrackedVariable trackedMissedLog;
-    private final TrackedVariable trackedSnapshot;
-    private final TrackedVariable trackedStore;
+    private final TrackedVariable<HashSet<String>> trackedWrittenLog;
+    private final TrackedVariable<HashSet<String>> trackedMissedLog;
+    private final TrackedVariable<HashMap<String, String>> trackedSnapshot;
+    private final TrackedVariable<HashMap<String, String>> trackedStore;
 
     public Transaction(ConsistentStore consistentStore, Client client) {
         // Open
@@ -80,25 +80,14 @@ public class Transaction {
         if (snapshot.containsKey(key) && snapshot.get(key).equals(value))
             return;
 
+        // Change value in snapshot store
         snapshot.put(key, value);
+        trackedSnapshot.notifyChange(snapshot);
         // Add key in written log
-        // trackedWrittenLog.before();
         writtenLog.add(key);
-        // Notify
-//        trackedSnapshot.change(snapshot);
-//        trackedWrittenLog.change(writtenLog);
-        // TODO make a try apply to avoid try bloc everywhere
-        try {
-            trackedSnapshot.apply("add", key, value);
+        trackedWrittenLog.notifyChange(writtenLog);
 
-            trackedWrittenLog.apply("add", key);
-//            // End of the TLA actions Add / Replace
-            traceInstrumentation.commit();
-//            traceInstrumentation.commitChanges();
-        } catch (TraceProducerException e) {
-            System.out.println(e.toString());
-            e.printStackTrace();
-        }
+        Helpers.tryCommit(traceInstrumentation);
     }
 
     public void remove(String key) {
@@ -111,22 +100,11 @@ public class Transaction {
             return;
 
         snapshot.remove(key);
+        trackedSnapshot.notifyChange(snapshot);
         writtenLog.add(key);
-        // Notify
-//        trackedSnapshot.change(snapshot);
-//        trackedWrittenLog.change(writtenLog);
+        trackedWrittenLog.notifyChange(writtenLog);
 
-
-        try {
-            trackedSnapshot.apply("remove", key);
-            trackedWrittenLog.apply("add", key);
-//            // End of the TLA actions Remove
-            traceInstrumentation.commit();
-//            traceInstrumentation.commitChanges();
-        } catch (TraceProducerException e) {
-            System.out.println(e.toString());
-            e.printStackTrace();
-        }
+        Helpers.tryCommit(traceInstrumentation);
     }
 
     public void read(String key) {
@@ -134,16 +112,8 @@ public class Transaction {
     }
 
     public void addMissed(HashSet<String> keys) {
-        System.out.println("addMissed");
         missedLog.addAll(keys);
-        // Notify
-//        trackedMissedLog.change(missedLog);
-        try {
-            trackedMissedLog.apply("missedUpdate", keys);
-        } catch (TraceProducerException e) {
-            System.out.println(e.toString());
-            e.printStackTrace();
-        }
+        trackedMissedLog.notifyChange(missedLog);
     }
 
     /**
@@ -155,7 +125,6 @@ public class Transaction {
     }
 
     public HashSet<String> commit() {
-        System.out.println("commit");
         // Close
 
         // Merging store snapshot into store
@@ -169,34 +138,17 @@ public class Transaction {
                 store.remove(key);
 
         }
-        // Notify
-//        trackedStore.change(store);
-
-        try {
-            trackedStore.apply("set", store);
-        } catch (TraceProducerException e) {
-            System.out.println(e.toString());
-            e.printStackTrace();
-        }
+        trackedStore.notifyChange(store);
 
         // Copy for return
-        final HashSet<String> writtenLogCpy = (HashSet<String>)writtenLog.clone();
+        final HashSet<String> writtenLogCpy = new HashSet<>(writtenLog);
 
         // Clean logs
         writtenLog.clear();
         missedLog.clear();
 
-        // Notify
-//        trackedWrittenLog.change(writtenLog);
-//        trackedMissedLog.change(missedLog);
-
-        try {
-            trackedWrittenLog.apply("clear");
-            trackedMissedLog.apply("clear");
-        } catch (TraceProducerException e) {
-            System.out.println(e.toString());
-            e.printStackTrace();
-        }
+        trackedWrittenLog.notifyChange(writtenLog);
+        trackedMissedLog.notifyChange(missedLog);
 
         return writtenLogCpy;
     }

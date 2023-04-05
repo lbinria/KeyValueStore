@@ -13,7 +13,7 @@ JsonTracePath == IF "TRACE_PATH" \in DOMAIN IOEnv THEN IOEnv.TRACE_PATH ELSE "tr
 
 (* Read trace *)
 JsonTrace ==
-    ndJsonDeserialize(JsonTracePath)
+    ndJsonDeserializeOption(JsonTracePath, TRUE)
 
 (* Replace RM constant *)
 RM ==
@@ -26,6 +26,7 @@ Trace ==
 (* Generic operators *)
 (* Operators to apply when updating variable *)
 Replace(var, val) == val   \* 1st argument unnecessary but added for consistency
+ReplaceAsSet(var, val) == ToSet(val)
 ExceptAt(var, arg, val) == [var EXCEPT ![arg] = val]
 ExceptAt2(var, arg1, arg2, val) == [var EXCEPT ![arg1][arg2] = val]
 AddElement(var, val) == var \cup {val}
@@ -35,7 +36,20 @@ Clear(var) == {}
 
 ExceptAtMany(var, args, val) == [arg \in var |-> IF arg \in args THEN var[arg] = val (* TODO Allow other transform*) ELSE var[arg] = var[arg]]
 
+UpdateRemoveMissingSet(var, val, default) ==
+    [key \in DOMAIN var |-> IF key \in DOMAIN val THEN ToSet(val[key]) ELSE var[key]]
 
+UpdateRemoveMissing(var, val, default) ==
+    [key \in DOMAIN var |-> IF key \in DOMAIN val THEN val[key] ELSE var[key]]
+
+UpdateRemoveMissing2(var, val, default) ==
+    [key1 \in DOMAIN var |->
+        IF key1 \in DOMAIN val THEN
+            [key2 \in DOMAIN var[key1] |-> IF key2 \in DOMAIN val[key1] THEN val[key1][key2] ELSE var[key1][key2]]
+        ELSE
+            var[key1]
+\*            [key2 \in DOMAIN var[key1] |-> default]
+    ]
 
 
 VARIABLES   store,          \* A data store mapping keys to values.
@@ -46,26 +60,6 @@ VARIABLES   store,          \* A data store mapping keys to values.
             i
 
 vars == <<store, tx, snapshotStore, written, missed, i>>
-
-(* Specific operators *)
-(* Add key, value to snapshot store of transaction txId *)
-SnapshotStoreAdd(txId, k, v) == [snapshotStore EXCEPT ![txId][k] = v]
-(* Remove key, value to snapshot store of transaction txId *)
-SnapshotStoreRemove(txId, k) == [snapshotStore EXCEPT ![txId][k] = NoVal]
-
-MissedUpdate(txId, vals) ==
-    [otherTx \in TxId |-> IF otherTx \in tx' /\ otherTx = txId THEN missed[otherTx] \cup ToSet(vals) ELSE missed[otherTx]]
-
-StoreUpdate(vals) ==
-    [k \in Key |-> IF k \in DOMAIN vals THEN vals[k] ELSE store[k]]
-
-LogAdd(var, txId, val) == [var EXCEPT ![txId] = @ \cup {val}]
-LogClear(var, txId) == ExceptAt(var, txId, {})
-LogAddAll(var, txId, vals) == [var EXCEPT ![txId] = @ \cup ToSet(vals)]
-
-(* TESTOS *)
-\*TxUpdate(txId, op) == IF op = "add" THEN tx' \cup txId ELSE tx' \ {txId}
-\*StoreUpdate(vals) == [k \in Key |-> IF k \in DOMAIN vals THEN vals[k] ELSE store[k]]
 
 
 KV == INSTANCE MCKVS
@@ -79,14 +73,11 @@ Apply(var, op, args) ==
    CASE op = "ExceptAt" -> ExceptAt2(var, args[1], args[2], args[3])
    []   op = "AddElement" -> AddElement(var, args[1])
    []   op = "RemoveElement" -> RemoveElement(var, args[1])
-   []   op = "Replace" -> Replace(var, args[1])
-   []   op = "LogAdd" -> LogAdd(var, args[1], args[2])
-   []   op = "LogAddAll" -> LogAddAll(var, args[1], args[2])
-   []   op = "LogClear" -> LogClear(var, args[1])
-   []   op = "SnapshotStoreAdd" -> SnapshotStoreAdd(args[1], args[2], args[3])
-   []   op = "SnapshotStoreRemove" -> SnapshotStoreRemove(args[1], args[2])
-   []   op = "MissedUpdate" -> MissedUpdate(args[1], args[2])
-   []   op = "StoreUpdate" -> StoreUpdate(args[1])
+   []   op = "Replace" -> Replace(var, args)
+   []   op = "ReplaceAsSet" -> ReplaceAsSet(var, args)
+   []   op = "UpdateRemoveMissingSet" -> UpdateRemoveMissingSet(var, args, "null")
+   []   op = "UpdateRemoveMissing" -> UpdateRemoveMissing(var, args, "null")
+   []   op = "UpdateRemoveMissing2" -> UpdateRemoveMissing2(var, args, "null")
 
 MapVariables(t) ==
     /\

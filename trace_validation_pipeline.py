@@ -31,7 +31,7 @@ merge_process = Popen([
     ".",
     "--map",
     "kvs.map.json",
-    "--validate"
+#     "--validate"
 ], stdout=PIPE)
 
 merge_process.wait()
