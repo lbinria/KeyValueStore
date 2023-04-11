@@ -13,26 +13,25 @@ public class ConsistentStore {
     private final HashMap<String, String> store;
     private final ArrayList<Transaction> transactionPool;
 
-    private final TraceInstrumentation traceInstrumentation;
     private final TrackedVariable<ArrayList<Transaction>> trackedTransactionPool;
 
-    public ConsistentStore(TraceInstrumentation traceInstrumentation) {
-        this(new HashMap<>(), traceInstrumentation);
+    public ConsistentStore() {
+        this(new HashMap<>());
     }
 
-    public ConsistentStore(HashMap<String, String> store, TraceInstrumentation traceInstrumentation) {
+    public ConsistentStore(HashMap<String, String> store) {
         this.store = store;
-        this.traceInstrumentation = traceInstrumentation;
         this.transactionPool = new ArrayList<>();
-        this.trackedTransactionPool = traceInstrumentation.add("transactionPool", transactionPool);
+        this.trackedTransactionPool = TraceSingleton.getInstance().add("transactionPool", transactionPool);
     }
 
     public synchronized Transaction open(Client client) {
         Transaction tx = new Transaction(this, client);
         transactionPool.add(tx);
-        trackedTransactionPool.notifyChange(transactionPool);
+//        trackedTransactionPool.notifyChange(transactionPool);
+        TraceSingleton.getInstance().notifyChange("transactionPool", "add", new String[]{}, tx);
 
-        Helpers.tryCommit(traceInstrumentation);
+        TraceSingleton.tryCommit();
 
         return tx;
     }
@@ -66,17 +65,20 @@ public class ConsistentStore {
 
         // Remove from pool
         transactionPool.remove(transaction);
-        trackedTransactionPool.notifyChange(transactionPool);
+//        trackedTransactionPool.notifyChange(transactionPool);
+        TraceSingleton.getInstance().notifyChange("transactionPool", "remove", new String[]{}, transaction);
 
-        Helpers.tryCommit(traceInstrumentation);
+        TraceSingleton.tryCommit();
     }
 
     public void rollback(Transaction transaction) {
         // Just remove transaction from pool without commit
+        transaction.rollback();
         transactionPool.remove(transaction);
-        trackedTransactionPool.notifyChange(transactionPool);
+//        trackedTransactionPool.notifyChange(transactionPool);
+        TraceSingleton.getInstance().notifyChange("transactionPool", "remove", new String[]{}, transaction);
 
-        Helpers.tryCommit(traceInstrumentation);
+        TraceSingleton.tryCommit();
     }
 
     public long getNbOpenTransaction() {
@@ -85,10 +87,6 @@ public class ConsistentStore {
 
     public ArrayList<Transaction> getTransactionPool() {
         return transactionPool;
-    }
-
-    public TraceInstrumentation getTraceInstrumentation() {
-        return traceInstrumentation;
     }
 
     public HashMap<String, String> getStore() {

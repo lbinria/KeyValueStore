@@ -4,7 +4,6 @@ from jsonpath import JSONPath
 import argparse
 import re
 import os
-from dict_recursive_update import recursive_update
 import copy
 
 # Open configuration file
@@ -12,79 +11,67 @@ with open("kvs.ndjson.conf") as f:
     json_conf = ndjson.load(f)[0]
 
 # print(json_conf)
-
-def identity(val): return val
 def null(): return "null"
 
+# Overwrite
 def default_val(name):
-    if name == 'store':
+    if name == 'store' or name == 'snapshot':
         return {key : null() for key in json_conf['Key']}
-    elif name == 'snapshot':
-        return {txId : {key : null() for key in json_conf['Key']} for txId in json_conf['TxId']}
     elif name == 'transactionPool':
         return []
     elif name == 'writtenLog' or name == 'missedLog':
         return {txId : [] for txId in json_conf['TxId']}
 
-# def map_val(name, ctx, val):
-#     if name == "store":
-#         return default_val(name) | val
-#     elif name == "snapshot":
-#         new_val = {ctx[0]: val}
-#         return recursive_update(default_val(name), new_val)
-#     elif name == "transactionPool":
-#         return [x['id'] for x in val]
-#     elif name == "writtenLog" or name == "missedLog":
-#         new_val = {ctx[0]: val}
-#         return default_val(name) | new_val
-#         return new_val
+def map_args(name, path, args):
+    return [map_val(name, path, val) for val in args]
 
-def map_val(name, ctx, val):
+def map_val(name, path, val):
+    if not val:
+        return default_val(name)
     if name == "store":
         return val
     elif name == "snapshot":
-        return {ctx[0]: val}
+        return val
     elif name == "transactionPool":
-        return [x['id'] for x in val]
-    elif name == "writtenLog" or name == "missedLog":
-        return {ctx[0]: val}
+        return val['id']
+    elif name == "written" or name == "missed":
+        return val
 
+# Overwrite
 def map_name(name):
     d = {
         'store': 'store',
         'snapshot': 'snapshotStore',
         'transactionPool': 'tx',
-        'writtenLog': 'written',
-        'missedLog': 'missed'
+        'written': 'written',
+        'missed': 'missed'
     }
     return d[name]
 
 def map_op(name):
     if name == 'set':
         return 'Replace'
+    elif name == 'add':
+        return 'AddElement'
+    elif name == 'add_all':
+        return 'AddElements'
+    elif name == 'clear':
+        return 'Clear'
+    elif name == 'clear_record':
+        return 'ClearRec'
+    elif name == 'remove':
+        return 'RemoveElement'
+    elif name == 'remove_key':
+        return 'RemoveKey'
+    elif name == 'update_record':
+        return 'UpdateRec'
 
 # Open trace file
 with open("kvs.ndjson") as f:
     json_trace = ndjson.load(f)
 
-variables = dict()
-
-def map_merge_val(name, ctx, val):
-    global variables
-    mapped_val = map_val(name, ctx, val)
-
-    if name not in variables:
-        variables[name] = default_val(name)
-
-    if type(mapped_val)==dict:
-        mapped_val = recursive_update(variables[name], mapped_val)
-
-    variables[name] = mapped_val
-
-    return copy.deepcopy(mapped_val)
-
 def map_event(event):
-    return { 'sender': event['sender'], 'var': map_name(event['var']), 'args': map_merge_val(event['var'], event['ctx'], event['args']), 'op': map_op(event['op']), 'clock': event['clock'] }
+    return { 'clock': event['clock'], 'var': map_name(event['var']), 'op': map_op(event['op']), 'path': event['path'], 'args': map_args(event['var'], event['path'], event['args']), 'sender': event['sender'] }
 
 
 json_mapped_trace = list(map(map_event, json_trace))

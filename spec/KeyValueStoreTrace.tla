@@ -13,7 +13,7 @@ JsonTracePath == IF "TRACE_PATH" \in DOMAIN IOEnv THEN IOEnv.TRACE_PATH ELSE "tr
 
 (* Read trace *)
 JsonTrace ==
-    ndJsonDeserializeOption(JsonTracePath, TRUE)
+    ndJsonDeserialize(JsonTracePath)
 
 (* Replace RM constant *)
 RM ==
@@ -24,33 +24,66 @@ Trace ==
     SubSeq(JsonTrace, 2, Len(JsonTrace))
 
 (* Generic operators *)
-(* Operators to apply when updating variable *)
-Replace(var, val) == val   \* 1st argument unnecessary but added for consistency
-ReplaceAsSet(var, val) == ToSet(val)
-ExceptAt(var, arg, val) == [var EXCEPT ![arg] = val]
-ExceptAt2(var, arg1, arg2, val) == [var EXCEPT ![arg1][arg2] = val]
-AddElement(var, val) == var \cup {val}
-AddElements(var, vals) == var \cup vals
-RemoveElement(var, val) == var \ {val}
-Clear(var) == {}
+Replace(cur, val) == val
+AddElement(cur, val) == cur \cup {val}
+AddElements(cur, vals) == cur \cup vals
+RemoveElement(cur, val) == cur \ {val}
+Clear(cur, val) == {}
+\*RemoveKey(cur, val) == "null" \* TODO replace with NoVal
+RemoveKey(cur, val) == [k \in DOMAIN cur |-> IF k = val THEN "null" ELSE cur[k]]
+UpdateRec(cur, val) == [k \in DOMAIN cur |-> IF k \in DOMAIN val THEN val[k] ELSE cur[k]]
 
-ExceptAtMany(var, args, val) == [arg \in var |-> IF arg \in args THEN var[arg] = val (* TODO Allow other transform*) ELSE var[arg] = var[arg]]
+\* TODO maybe recursive
+ClearRec(cur, val) ==
+    [k \in Key |-> NoVal]
 
-UpdateRemoveMissingSet(var, val, default) ==
-    [key \in DOMAIN var |-> IF key \in DOMAIN val THEN ToSet(val[key]) ELSE var[key]]
+(* Can be extracted from init *)
+Default(varName) ==
+    CASE varName = "store" -> [k \in Key |-> NoVal]
+    []  varName = "tx" -> {}
+    []  varName = "snapshotStore" -> [t \in TxId |-> [k \in Key |-> NoVal]]
+    []  varName = "written" -> [t \in TxId |-> {}]
+    []  varName = "missed" -> [t \in TxId |-> {}]
 
-UpdateRemoveMissing(var, val, default) ==
-    [key \in DOMAIN var |-> IF key \in DOMAIN val THEN val[key] ELSE var[key]]
+Apply(var, op, args) ==
+    CASE op = "Replace" -> Replace(var, args[1])
+    []   op = "AddElement" -> AddElement(var, args[1])
+    []   op = "AddElements" -> AddElements(var, args[1])
+    []   op = "RemoveElement" -> RemoveElement(var, args[1])
+    []   op = "Clear" -> Clear(var, <<>>)
+    []   op = "ClearRec" -> ClearRec(var, <<>>)
+    []   op = "RemoveKey" -> RemoveKey(var, args[1])
+    []   op = "UpdateRec" -> UpdateRec(var, args[1])
 
-UpdateRemoveMissing2(var, val, default) ==
-    [key1 \in DOMAIN var |->
-        IF key1 \in DOMAIN val THEN
-            [key2 \in DOMAIN var[key1] |-> IF key2 \in DOMAIN val[key1] THEN val[key1][key2] ELSE var[key1][key2]]
+\*RECURSIVE ExceptAtPath(_,_,_,_)
+\*LOCAL ExceptAtPath(var, path, op, args) ==
+\*    LET h == Head(path) IN
+\*    IF Len(path) > 1 THEN
+\*        [var EXCEPT ![h] = ExceptAtPath(var[h], Tail(path), op, args)]
+\*    ELSE
+\*        [var EXCEPT ![h] = Apply(@, op, args)]
+
+RECURSIVE ExceptAtPath(_,_,_,_)
+LOCAL ExceptAtPath(var, path, op, args) ==
+    LET h == Head(path) IN
+    IF Len(path) > 1 THEN
+        [var EXCEPT ![h] = ExceptAtPath(var[h], Tail(path), op, args)]
+    ELSE
+        [var EXCEPT ![h] = Apply(@, op, args)]
+
+RECURSIVE ExceptAtPaths(_,_)
+LOCAL ExceptAtPaths(var, updates) ==
+    LET update == Head(updates) IN
+    LET applied ==
+        IF Len(update.path) > 0 THEN
+            ExceptAtPath(var, update.path, update.op, update.args)
         ELSE
-            var[key1]
-\*            [key2 \in DOMAIN var[key1] |-> default]
-    ]
-
+            Apply(var, update.op, update.args)
+    IN
+    IF Len(updates) > 1 THEN
+        ExceptAtPaths(applied, Tail(updates))
+    ELSE
+        applied
 
 VARIABLES   store,          \* A data store mapping keys to values.
             tx,             \* The set of open snapshot transactions.
@@ -69,36 +102,26 @@ TraceInit ==
   /\ i = 1
   /\ KV!Init
 
-Apply(var, op, args) ==
-   CASE op = "ExceptAt" -> ExceptAt2(var, args[1], args[2], args[3])
-   []   op = "AddElement" -> AddElement(var, args[1])
-   []   op = "RemoveElement" -> RemoveElement(var, args[1])
-   []   op = "Replace" -> Replace(var, args)
-   []   op = "ReplaceAsSet" -> ReplaceAsSet(var, args)
-   []   op = "UpdateRemoveMissingSet" -> UpdateRemoveMissingSet(var, args, "null")
-   []   op = "UpdateRemoveMissing" -> UpdateRemoveMissing(var, args, "null")
-   []   op = "UpdateRemoveMissing2" -> UpdateRemoveMissing2(var, args, "null")
-
 MapVariables(t) ==
     /\
         IF "store" \in DOMAIN t
-        THEN store' = Apply(store, t.store.op, t.store.args)
+        THEN store' = ExceptAtPaths(store, t.store)
         ELSE TRUE
     /\
         IF "tx" \in DOMAIN t
-        THEN tx' = Apply(tx, t.tx.op, t.tx.args)
+        THEN tx' = ExceptAtPaths(tx, t.tx)
         ELSE TRUE
     /\
         IF "snapshotStore" \in DOMAIN t
-        THEN snapshotStore' = Apply(snapshotStore, t.snapshotStore.op, t.snapshotStore.args)
+        THEN snapshotStore' = ExceptAtPaths(snapshotStore, t.snapshotStore)
         ELSE TRUE
     /\
         IF "written" \in DOMAIN t
-        THEN written' = Apply(written, t.written.op, t.written.args)
+        THEN written' = ExceptAtPaths(written, t.written)
         ELSE TRUE
     /\
         IF "missed" \in DOMAIN t
-        THEN missed' = Apply(missed, t.missed.op, t.missed.args)
+        THEN missed' = ExceptAtPaths(missed, t.missed)
         ELSE TRUE
 
 ReadNext ==

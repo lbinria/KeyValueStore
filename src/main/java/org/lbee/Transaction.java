@@ -5,10 +5,7 @@ import org.lbee.instrumentation.TraceInstrumentation;
 import org.lbee.instrumentation.TraceProducerException;
 import org.lbee.instrumentation.TrackedVariable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 public class Transaction {
 
@@ -30,7 +27,6 @@ public class Transaction {
 
     private final long timeout = -1;
 
-    private final TraceInstrumentation traceInstrumentation;
     private final TrackedVariable<HashSet<String>> trackedWrittenLog;
     private final TrackedVariable<HashSet<String>> trackedMissedLog;
     private final TrackedVariable<HashMap<String, String>> trackedSnapshot;
@@ -63,12 +59,16 @@ public class Transaction {
         this.missedLog = new HashSet<>();
         this.store = consistentStore.getStore();
         this.snapshot = new HashMap<>(store);
+        // Note: I have to trace every variable in order to avoid divergences between spec and implementation
+        TraceSingleton.getInstance().notifyChange("snapshot", "clear_record", new String[] { this.guid });
+        TraceSingleton.getInstance().notifyChange("snapshot", "update_record", new String[] { this.guid }, snapshot);
+//        this.trackedSnapshot.notifyChange(snapshot);
 
-        this.traceInstrumentation = consistentStore.getTraceInstrumentation();
-        this.trackedWrittenLog = this.traceInstrumentation.add("writtenLog", writtenLog, this.guid);
-        this.trackedMissedLog = this.traceInstrumentation.add("missedLog", missedLog, this.guid);
-        this.trackedSnapshot = this.traceInstrumentation.add("snapshot", snapshot, this.guid);
-        this.trackedStore = this.traceInstrumentation.add("store", store);
+        this.trackedWrittenLog = TraceSingleton.getInstance().add("writtenLog", writtenLog, this.guid);
+        this.trackedMissedLog = TraceSingleton.getInstance().add("missedLog", missedLog, this.guid);
+        this.trackedSnapshot = TraceSingleton.getInstance().add("snapshot", snapshot, this.guid);
+        this.trackedStore = TraceSingleton.getInstance().add("store", store);
+
     }
 
     public void addOrReplace(String key, String value) {
@@ -82,12 +82,17 @@ public class Transaction {
 
         // Change value in snapshot store
         snapshot.put(key, value);
-        trackedSnapshot.notifyChange(snapshot);
         // Add key in written log
         writtenLog.add(key);
-        trackedWrittenLog.notifyChange(writtenLog);
 
-        Helpers.tryCommit(traceInstrumentation);
+//        trackedSnapshot.notifyChange(snapshot);
+//        trackedWrittenLog.notifyChange(writtenLog);
+
+        // Notify modifications
+        TraceSingleton.getInstance().notifyChange("snapshot", "set",new String[] { this.guid, key }, value);
+        TraceSingleton.getInstance().notifyChange("written", "add", new String[] { this.guid }, key);
+
+        TraceSingleton.tryCommit();
     }
 
     public void remove(String key) {
@@ -100,11 +105,13 @@ public class Transaction {
             return;
 
         snapshot.remove(key);
-        trackedSnapshot.notifyChange(snapshot);
         writtenLog.add(key);
-        trackedWrittenLog.notifyChange(writtenLog);
+//        trackedSnapshot.notifyChange(snapshot);
+//        trackedWrittenLog.notifyChange(writtenLog);
+        TraceSingleton.getInstance().notifyChange("snapshot", "remove_key", new String[]{ this.guid }, key);
+        TraceSingleton.getInstance().notifyChange("written", "add", new String[]{ this.guid }, key);
 
-        Helpers.tryCommit(traceInstrumentation);
+        TraceSingleton.tryCommit();
     }
 
     public void read(String key) {
@@ -113,7 +120,10 @@ public class Transaction {
 
     public void addMissed(HashSet<String> keys) {
         missedLog.addAll(keys);
-        trackedMissedLog.notifyChange(missedLog);
+//        trackedMissedLog.notifyChange(missedLog);
+//        TraceSingleton.getInstance().notifyChange("missed", "add_all", new String[]{}, keys);
+        for (String key : keys)
+            TraceSingleton.getInstance().notifyChange("missed", "add", new String[]{ this.guid }, key);
     }
 
     /**
@@ -133,12 +143,14 @@ public class Transaction {
             if (snapshot.containsKey(key)) {
                 String value = snapshot.get(key);
                 store.put(key, value);
+                TraceSingleton.getInstance().notifyChange("store", "set", new String[]{ key }, value);
             }
-            else
+            else {
                 store.remove(key);
-
+                TraceSingleton.getInstance().notifyChange("store", "remove_key", new String[]{}, key);
+            }
         }
-        trackedStore.notifyChange(store);
+//        trackedStore.notifyChange(store);
 
         // Copy for return
         final HashSet<String> writtenLogCpy = new HashSet<>(writtenLog);
@@ -147,11 +159,28 @@ public class Transaction {
         writtenLog.clear();
         missedLog.clear();
 
-        trackedWrittenLog.notifyChange(writtenLog);
-        trackedMissedLog.notifyChange(missedLog);
+//        trackedWrittenLog.notifyChange(writtenLog);
+//        trackedMissedLog.notifyChange(missedLog);
+        TraceSingleton.getInstance().notifyChange("written", "clear", new String[]{ this.guid });
+        TraceSingleton.getInstance().notifyChange("missed", "clear", new String[]{ this.guid });
+
+
+        // Note: clear snapshot explicitly because it's expected by spec
+        snapshot.clear();
+//        trackedSnapshot.notifyChange(snapshot);
+        TraceSingleton.getInstance().notifyChange("snapshot", "clear_record", new String[]{ this.guid });
 
         return writtenLogCpy;
     }
+
+    // Note: I have to add this function just for clear the snapshot...
+    public void rollback() {
+        // Note: clear snapshot explicitly because it's expected by spec
+        snapshot.clear();
+//        trackedSnapshot.notifyChange(snapshot);
+        TraceSingleton.getInstance().notifyChange("snapshot", "clear_record", new String[]{ this.guid });
+    }
+
 
     public HashMap<String, String> getSnapshot() {
         return snapshot;
