@@ -60,7 +60,7 @@ public class Transaction {
         this.store = consistentStore.getStore();
         this.snapshot = new HashMap<>(store);
         // Note: I have to trace every variable in order to avoid divergences between spec and implementation
-        TraceSingleton.getInstance().notifyChange("snapshot", "ClearRec", new String[] { this.guid });
+        TraceSingleton.getInstance().notifyChange("snapshot", "Init", new String[] { this.guid });
         TraceSingleton.getInstance().notifyChange("snapshot", "UpdateRec", new String[] { this.guid }, snapshot);
 //        this.trackedSnapshot.notifyChange(snapshot);
 
@@ -155,30 +155,43 @@ public class Transaction {
         // Copy for return
         final HashSet<String> writtenLogCpy = new HashSet<>(writtenLog);
 
-        // Clean logs
-        writtenLog.clear();
-        missedLog.clear();
+//        // Clean logs
+//        writtenLog.clear();
+//        missedLog.clear();
+//
+////        trackedWrittenLog.notifyChange(writtenLog);
+////        trackedMissedLog.notifyChange(missedLog);
+//        TraceSingleton.getInstance().notifyChange("written", "Clear", new String[]{ this.guid });
+//        TraceSingleton.getInstance().notifyChange("missed", "Clear", new String[]{ this.guid });
+//
+//
+//        // Note: clear snapshot explicitly because it's expected by spec
+//        snapshot.clear();
+////        trackedSnapshot.notifyChange(snapshot);
+//        TraceSingleton.getInstance().notifyChange("snapshot", "ClearRec", new String[]{ this.guid });
 
-//        trackedWrittenLog.notifyChange(writtenLog);
-//        trackedMissedLog.notifyChange(missedLog);
-        TraceSingleton.getInstance().notifyChange("written", "Clear", new String[]{ this.guid });
-        TraceSingleton.getInstance().notifyChange("missed", "Clear", new String[]{ this.guid });
-
-
-        // Note: clear snapshot explicitly because it's expected by spec
-        snapshot.clear();
-//        trackedSnapshot.notifyChange(snapshot);
-        TraceSingleton.getInstance().notifyChange("snapshot", "ClearRec", new String[]{ this.guid });
+        cleanup();
 
         return writtenLogCpy;
     }
 
     // Note: I have to add this function just for clear the snapshot...
     public void rollback() {
-        // Note: clear snapshot explicitly because it's expected by spec
+        cleanup();
+//        // Note: clear snapshot explicitly because it's expected by spec
+//        snapshot.clear();
+////        trackedSnapshot.notifyChange(snapshot);
+//        TraceSingleton.getInstance().notifyChange("snapshot", "ClearRec", new String[]{ this.guid });
+    }
+
+    private void cleanup() {
+        // Note: clear explicitly because it's expected by spec
+        writtenLog.clear();
+        missedLog.clear();
         snapshot.clear();
-//        trackedSnapshot.notifyChange(snapshot);
-        TraceSingleton.getInstance().notifyChange("snapshot", "ClearRec", new String[]{ this.guid });
+        TraceSingleton.getInstance().notifyChange("written", "Clear", new String[]{ this.guid });
+        TraceSingleton.getInstance().notifyChange("missed", "Clear", new String[]{ this.guid });
+        TraceSingleton.getInstance().notifyChange("snapshot", "Init", new String[]{ this.guid });
     }
 
 
