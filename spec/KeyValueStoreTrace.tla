@@ -29,8 +29,8 @@ AddElement(cur, val) == cur \cup {val}
 AddElements(cur, vals) == cur \cup vals
 RemoveElement(cur, val) == cur \ {val}
 Clear(cur, val) == {}
-\*RemoveKey(cur, val) == "null" \* TODO replace with NoVal
-RemoveKey(cur, val) == [k \in DOMAIN cur |-> IF k = val THEN "null" ELSE cur[k]]
+\*RemoveKey(cur, val) == NoVal
+RemoveKey(cur, val) == [k \in DOMAIN cur |-> IF k = val THEN NoVal ELSE cur[k]]
 UpdateRec(cur, val) == [k \in DOMAIN cur |-> IF k \in DOMAIN val THEN val[k] ELSE cur[k]]
 
 \* TODO maybe recursive
@@ -45,7 +45,7 @@ Default(varName) ==
     []  varName = "written" -> [t \in TxId |-> {}]
     []  varName = "missed" -> [t \in TxId |-> {}]
 
-Apply(var, op, args) ==
+Apply(var, default, op, args) ==
     CASE op = "Replace" -> Replace(var, args[1])
     []   op = "AddElement" -> AddElement(var, args[1])
     []   op = "AddElements" -> AddElements(var, args[1])
@@ -54,34 +54,30 @@ Apply(var, op, args) ==
     []   op = "ClearRec" -> ClearRec(var, <<>>)
     []   op = "RemoveKey" -> RemoveKey(var, args[1])
     []   op = "UpdateRec" -> UpdateRec(var, args[1])
+    []   op = "Init" -> Replace(var, default)
 
-\*RECURSIVE ExceptAtPath(_,_,_,_)
-\*LOCAL ExceptAtPath(var, path, op, args) ==
-\*    LET h == Head(path) IN
-\*    IF Len(path) > 1 THEN
-\*        [var EXCEPT ![h] = ExceptAtPath(var[h], Tail(path), op, args)]
-\*    ELSE
-\*        [var EXCEPT ![h] = Apply(@, op, args)]
 
-RECURSIVE ExceptAtPath(_,_,_,_)
-LOCAL ExceptAtPath(var, path, op, args) ==
+
+RECURSIVE ExceptAtPath(_,_,_,_,_)
+LOCAL ExceptAtPath(var, default, path, op, args) ==
     LET h == Head(path) IN
     IF Len(path) > 1 THEN
-        [var EXCEPT ![h] = ExceptAtPath(var[h], Tail(path), op, args)]
+        [var EXCEPT ![h] = ExceptAtPath(var[h], default[h], Tail(path), op, args)]
     ELSE
-        [var EXCEPT ![h] = Apply(@, op, args)]
+        [var EXCEPT ![h] = Apply(@, default[h], op, args)]
 
-RECURSIVE ExceptAtPaths(_,_)
-LOCAL ExceptAtPaths(var, updates) ==
+RECURSIVE ExceptAtPaths(_,_,_)
+LOCAL ExceptAtPaths(var, varName, updates) ==
     LET update == Head(updates) IN
+
     LET applied ==
         IF Len(update.path) > 0 THEN
-            ExceptAtPath(var, update.path, update.op, update.args)
+            ExceptAtPath(var, Default(varName), update.path, update.op, update.args)
         ELSE
-            Apply(var, update.op, update.args)
+            Apply(var, Default(varName), update.op, update.args)
     IN
     IF Len(updates) > 1 THEN
-        ExceptAtPaths(applied, Tail(updates))
+        ExceptAtPaths(applied, varName, Tail(updates))
     ELSE
         applied
 
@@ -105,23 +101,23 @@ TraceInit ==
 MapVariables(t) ==
     /\
         IF "store" \in DOMAIN t
-        THEN store' = ExceptAtPaths(store, t.store)
+        THEN store' = ExceptAtPaths(store, "store", t.store)
         ELSE TRUE
     /\
         IF "tx" \in DOMAIN t
-        THEN tx' = ExceptAtPaths(tx, t.tx)
+        THEN tx' = ExceptAtPaths(tx, "tx", t.tx)
         ELSE TRUE
     /\
         IF "snapshotStore" \in DOMAIN t
-        THEN snapshotStore' = ExceptAtPaths(snapshotStore, t.snapshotStore)
+        THEN snapshotStore' = ExceptAtPaths(snapshotStore, "snapshotStore", t.snapshotStore)
         ELSE TRUE
     /\
         IF "written" \in DOMAIN t
-        THEN written' = ExceptAtPaths(written, t.written)
+        THEN written' = ExceptAtPaths(written, "written", t.written)
         ELSE TRUE
     /\
         IF "missed" \in DOMAIN t
-        THEN missed' = ExceptAtPaths(missed, t.missed)
+        THEN missed' = ExceptAtPaths(missed, "missed", t.missed)
         ELSE TRUE
 
 ReadNext ==
