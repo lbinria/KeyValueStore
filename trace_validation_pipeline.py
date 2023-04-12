@@ -1,8 +1,10 @@
-
 import os
 import time
 import signal
 from subprocess import Popen, PIPE
+import run_impl
+import kvs_mapper
+from trace_validation_tools import tla_trace_converter
 
 print("# Clean up")
 
@@ -13,35 +15,24 @@ for trace_file in trace_files:
 
 print("# Start implementation.\n")
 
-impl_process = Popen([
-    "python",
-    "run_impl.py"
-])
+run_impl.run()
 
-# Wait all client are finished
-impl_process.wait()
-impl_process.terminate()
+print("# Map traces.\n")
+
+trace_mapped = kvs_mapper.run("kvs.ndjson", "kvs.ndjson.conf")
+# Write to file
+with open("trace-mapped.ndjson", "w") as f:
+    f.write(trace_mapped)
 
 print("# Convert traces for TLA+.\n")
 
-merge_process = Popen([
-    "python",
-    "/home/me/Projects/trace_validation_tools/tools/tla_trace_converter_pipeline.py",
-    "--files",
-    ".",
-    "--map",
-    "kvs.map.json",
-#     "--validate"
-], stdout=PIPE)
-
-merge_process.wait()
-merge_process.terminate()
-
-# merged_events = merge_process.stdout.read().decode('utf-8')
-# with open("trace-merged.ndjson", "w") as f:
-#     f.write(merged_events)
+trace_tla = tla_trace_converter.run("trace-mapped.ndjson")
+# Write to file
+with open("trace-tla.ndjson", "w") as f:
+    f.write(trace_tla)
 
 print("# Start TLA+ trace spec.\n")
+
 
 tla_trace_validation_process = Popen([
     "python",
