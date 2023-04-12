@@ -29,7 +29,7 @@ public class ConsistentStore {
         Transaction tx = new Transaction(this, client);
         transactionPool.add(tx);
 //        trackedTransactionPool.notifyChange(transactionPool);
-        TraceSingleton.getInstance().notifyChange("transactionPool", "add", new String[]{}, tx);
+        TraceSingleton.getInstance().notifyChange("transactionPool", "AddElement", new String[]{}, tx);
 
         TraceSingleton.tryCommit();
 
@@ -66,7 +66,7 @@ public class ConsistentStore {
         // Remove from pool
         transactionPool.remove(transaction);
 //        trackedTransactionPool.notifyChange(transactionPool);
-        TraceSingleton.getInstance().notifyChange("transactionPool", "remove", new String[]{}, transaction);
+        TraceSingleton.getInstance().notifyChange("transactionPool", "RemoveElement", new String[]{}, transaction);
 
         TraceSingleton.tryCommit();
     }
@@ -76,7 +76,7 @@ public class ConsistentStore {
         transaction.rollback();
         transactionPool.remove(transaction);
 //        trackedTransactionPool.notifyChange(transactionPool);
-        TraceSingleton.getInstance().notifyChange("transactionPool", "remove", new String[]{}, transaction);
+        TraceSingleton.getInstance().notifyChange("transactionPool", "RemoveElement", new String[]{}, transaction);
 
         TraceSingleton.tryCommit();
     }

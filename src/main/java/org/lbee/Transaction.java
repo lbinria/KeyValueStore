@@ -60,8 +60,8 @@ public class Transaction {
         this.store = consistentStore.getStore();
         this.snapshot = new HashMap<>(store);
         // Note: I have to trace every variable in order to avoid divergences between spec and implementation
-        TraceSingleton.getInstance().notifyChange("snapshot", "clear_record", new String[] { this.guid });
-        TraceSingleton.getInstance().notifyChange("snapshot", "update_record", new String[] { this.guid }, snapshot);
+        TraceSingleton.getInstance().notifyChange("snapshot", "ClearRec", new String[] { this.guid });
+        TraceSingleton.getInstance().notifyChange("snapshot", "UpdateRec", new String[] { this.guid }, snapshot);
 //        this.trackedSnapshot.notifyChange(snapshot);
 
         this.trackedWrittenLog = TraceSingleton.getInstance().add("writtenLog", writtenLog, this.guid);
@@ -89,8 +89,8 @@ public class Transaction {
 //        trackedWrittenLog.notifyChange(writtenLog);
 
         // Notify modifications
-        TraceSingleton.getInstance().notifyChange("snapshot", "set",new String[] { this.guid, key }, value);
-        TraceSingleton.getInstance().notifyChange("written", "add", new String[] { this.guid }, key);
+        TraceSingleton.getInstance().notifyChange("snapshot", "Replace",new String[] { this.guid, key }, value);
+        TraceSingleton.getInstance().notifyChange("written", "AddElement", new String[] { this.guid }, key);
 
         TraceSingleton.tryCommit();
     }
@@ -108,8 +108,8 @@ public class Transaction {
         writtenLog.add(key);
 //        trackedSnapshot.notifyChange(snapshot);
 //        trackedWrittenLog.notifyChange(writtenLog);
-        TraceSingleton.getInstance().notifyChange("snapshot", "remove_key", new String[]{ this.guid }, key);
-        TraceSingleton.getInstance().notifyChange("written", "add", new String[]{ this.guid }, key);
+        TraceSingleton.getInstance().notifyChange("snapshot", "RemoveKey", new String[]{ this.guid }, key);
+        TraceSingleton.getInstance().notifyChange("written", "AddElement", new String[]{ this.guid }, key);
 
         TraceSingleton.tryCommit();
     }
@@ -123,7 +123,7 @@ public class Transaction {
 //        trackedMissedLog.notifyChange(missedLog);
 //        TraceSingleton.getInstance().notifyChange("missed", "add_all", new String[]{}, keys);
         for (String key : keys)
-            TraceSingleton.getInstance().notifyChange("missed", "add", new String[]{ this.guid }, key);
+            TraceSingleton.getInstance().notifyChange("missed", "AddElement", new String[]{ this.guid }, key);
     }
 
     /**
@@ -143,11 +143,11 @@ public class Transaction {
             if (snapshot.containsKey(key)) {
                 String value = snapshot.get(key);
                 store.put(key, value);
-                TraceSingleton.getInstance().notifyChange("store", "set", new String[]{ key }, value);
+                TraceSingleton.getInstance().notifyChange("store", "Replace", new String[]{ key }, value);
             }
             else {
                 store.remove(key);
-                TraceSingleton.getInstance().notifyChange("store", "remove_key", new String[]{}, key);
+                TraceSingleton.getInstance().notifyChange("store", "RemoveKey", new String[]{}, key);
             }
         }
 //        trackedStore.notifyChange(store);
@@ -161,14 +161,14 @@ public class Transaction {
 
 //        trackedWrittenLog.notifyChange(writtenLog);
 //        trackedMissedLog.notifyChange(missedLog);
-        TraceSingleton.getInstance().notifyChange("written", "clear", new String[]{ this.guid });
-        TraceSingleton.getInstance().notifyChange("missed", "clear", new String[]{ this.guid });
+        TraceSingleton.getInstance().notifyChange("written", "Clear", new String[]{ this.guid });
+        TraceSingleton.getInstance().notifyChange("missed", "Clear", new String[]{ this.guid });
 
 
         // Note: clear snapshot explicitly because it's expected by spec
         snapshot.clear();
 //        trackedSnapshot.notifyChange(snapshot);
-        TraceSingleton.getInstance().notifyChange("snapshot", "clear_record", new String[]{ this.guid });
+        TraceSingleton.getInstance().notifyChange("snapshot", "ClearRec", new String[]{ this.guid });
 
         return writtenLogCpy;
     }
@@ -178,7 +178,7 @@ public class Transaction {
         // Note: clear snapshot explicitly because it's expected by spec
         snapshot.clear();
 //        trackedSnapshot.notifyChange(snapshot);
-        TraceSingleton.getInstance().notifyChange("snapshot", "clear_record", new String[]{ this.guid });
+        TraceSingleton.getInstance().notifyChange("snapshot", "ClearRec", new String[]{ this.guid });
     }
 
 

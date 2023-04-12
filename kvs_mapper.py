@@ -49,22 +49,23 @@ def map_name(name):
     return d[name]
 
 def map_op(name):
-    if name == 'set':
-        return 'Replace'
-    elif name == 'add':
-        return 'AddElement'
-    elif name == 'add_all':
-        return 'AddElements'
-    elif name == 'clear':
-        return 'Clear'
-    elif name == 'clear_record':
-        return 'ClearRec'
-    elif name == 'remove':
-        return 'RemoveElement'
-    elif name == 'remove_key':
-        return 'RemoveKey'
-    elif name == 'update_record':
-        return 'UpdateRec'
+    return name
+#     if name == 'set':
+#         return 'Replace'
+#     elif name == 'add':
+#         return 'AddElement'
+#     elif name == 'add_all':
+#         return 'AddElements'
+#     elif name == 'clear':
+#         return 'Clear'
+#     elif name == 'clear_record':
+#         return 'ClearRec'
+#     elif name == 'remove':
+#         return 'RemoveElement'
+#     elif name == 'remove_key':
+#         return 'RemoveKey'
+#     elif name == 'update_record':
+#         return 'UpdateRec'
 
 # Open trace file
 with open("kvs.ndjson") as f:
