@@ -33,10 +33,6 @@ Clear(cur, val) == {}
 RemoveKey(cur, val) == [k \in DOMAIN cur |-> IF k = val THEN NoVal ELSE cur[k]]
 UpdateRec(cur, val) == [k \in DOMAIN cur |-> IF k \in DOMAIN val THEN val[k] ELSE cur[k]]
 
-\* TODO maybe recursive
-ClearRec(cur, val) ==
-    [k \in Key |-> NoVal]
-
 (* Can be extracted from init *)
 Default(varName) ==
     CASE varName = "store" -> [k \in Key |-> NoVal]
@@ -51,7 +47,6 @@ Apply(var, default, op, args) ==
     []   op = "AddElements" -> AddElements(var, args[1])
     []   op = "RemoveElement" -> RemoveElement(var, args[1])
     []   op = "Clear" -> Clear(var, <<>>)
-    []   op = "ClearRec" -> ClearRec(var, <<>>)
     []   op = "RemoveKey" -> RemoveKey(var, args[1])
     []   op = "UpdateRec" -> UpdateRec(var, args[1])
     []   op = "Init" -> Replace(var, default)

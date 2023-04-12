@@ -155,21 +155,6 @@ public class Transaction {
         // Copy for return
         final HashSet<String> writtenLogCpy = new HashSet<>(writtenLog);
 
-//        // Clean logs
-//        writtenLog.clear();
-//        missedLog.clear();
-//
-////        trackedWrittenLog.notifyChange(writtenLog);
-////        trackedMissedLog.notifyChange(missedLog);
-//        TraceSingleton.getInstance().notifyChange("written", "Clear", new String[]{ this.guid });
-//        TraceSingleton.getInstance().notifyChange("missed", "Clear", new String[]{ this.guid });
-//
-//
-//        // Note: clear snapshot explicitly because it's expected by spec
-//        snapshot.clear();
-////        trackedSnapshot.notifyChange(snapshot);
-//        TraceSingleton.getInstance().notifyChange("snapshot", "ClearRec", new String[]{ this.guid });
-
         cleanup();
 
         return writtenLogCpy;
@@ -178,10 +163,6 @@ public class Transaction {
     // Note: I have to add this function just for clear the snapshot...
     public void rollback() {
         cleanup();
-//        // Note: clear snapshot explicitly because it's expected by spec
-//        snapshot.clear();
-////        trackedSnapshot.notifyChange(snapshot);
-//        TraceSingleton.getInstance().notifyChange("snapshot", "ClearRec", new String[]{ this.guid });
     }
 
     private void cleanup() {
