@@ -80,18 +80,24 @@ VARIABLES   store,          \* A data store mapping keys to values.
             tx,             \* The set of open snapshot transactions.
             snapshotStore,  \* Snapshots of the store for each transaction.
             written,        \* A log of writes performed within each transaction.
-            missed,          \* The set of writes invisible to each transaction.
-            i
+            missed          \* The set of writes invisible to each transaction.
+\*            i
 
-vars == <<store, tx, snapshotStore, written, missed, i>>
+vars == <<store, tx, snapshotStore, written, missed(*, i*)>>
 
 
 KV == INSTANCE MCKVS
 
 (* Can be generated *)
-TraceInit ==
-  /\ i = 1
-  /\ KV!Init
+\*TraceInit ==
+\*  /\ i = 1
+\*  /\ KV!Init
+
+TraceInitConstraint ==
+    \* The implementation's initial state is deterministic and known.
+    TLCGet("level") = 1 => /\ KV!Init
+
+
 
 MapVariables(t) ==
     /\
@@ -115,33 +121,45 @@ MapVariables(t) ==
         THEN missed' = ExceptAtPaths(missed, "missed", t.missed)
         ELSE TRUE
 
-ReadNext ==
-    /\ i <= Len(Trace)
-    /\ i' = i + 1
-    /\ MapVariables(Trace[i])
+TraceNextConstraint ==
+    LET i == TLCGet("level")
+    IN
+       /\ i <= Len(Trace)
+        /\ MapVariables(Trace[i])
+
+\*ReadNext ==
+\*    /\ i <= Len(Trace)
+\*    /\ i' = i + 1
+\*    /\ MapVariables(Trace[i])
+
+TraceAccepted ==
+    LET d == TLCGet("stats").diameter IN
+    IF d - 1 = Len(Trace) THEN TRUE
+    ELSE Print(<<"Failed matching the trace to (a prefix of) a behavior:", Trace[d],
+                    "TLA+ debugger breakpoint hit count " \o ToString(d+1)>>, FALSE)
 
 -----------------------------------------------------------------------------
 
 (* Infinite stuttering... *)
-term ==
-    /\ i > Len(Trace)
-    /\ UNCHANGED vars
+\*term ==
+\*    /\ i > Len(Trace)
+\*    /\ UNCHANGED vars
 
-TraceNext ==
-    \/
-        /\ ReadNext
-        /\ [KV!Next]_vars
-    \/
-        (* All trace processed case *)
-        /\ term
+\*TraceNext ==
+\*    \/
+\*        /\ ReadNext
+\*        /\ [KV!Next]_vars
+\*    \/
+\*        (* All trace processed case *)
+\*        /\ term
 
-TraceBehavior == TraceInit /\ [][TraceNext]_vars /\ WF_vars(TraceNext)
+\*TraceBehavior == TraceInit /\ [][TraceNext]_vars /\ WF_vars(TraceNext)
 
-Complete == <>[](i = Len(Trace) + 1)
+\*Complete == <>[](i = Len(Trace) + 1)
 
-THEOREM TraceBehavior => KV!Spec
-THEOREM TraceBehavior => []KV!TypeInvariant
-THEOREM TraceBehavior => []KV!TxLifecycle
+\*THEOREM TraceBehavior => KV!Spec
+\*THEOREM TraceBehavior => []KV!TypeInvariant
+\*THEOREM TraceBehavior => []KV!TxLifecycle
 
 (* Property to check *)
 Spec == KV!Spec
