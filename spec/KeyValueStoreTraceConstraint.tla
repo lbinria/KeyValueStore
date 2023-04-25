@@ -1,21 +1,26 @@
---------------------------- MODULE KeyValueStoreTrace ---------------------------
+--------------------------- MODULE KeyValueStoreTraceConstraint ---------------------------
 
-EXTENDS TLC, Sequences, SequencesExt, Naturals, FiniteSets, Bags, Json, IOUtils
+EXTENDS TLC, Sequences, SequencesExt, Naturals, FiniteSets, Bags, Json, IOUtils, MCKVS
 
-(* Matches the configuration of the app. *)
-CONSTANTS
-    Key,
-    Val,
-    TxId,
-    NoVal
-
-JsonTracePath == IF "TRACE_PATH" \in DOMAIN IOEnv THEN IOEnv.TRACE_PATH ELSE "trace_valid_0.ndjson"
+ASSUME "TRACE_PATH" \in DOMAIN IOEnv
 
 (* Read trace *)
 JsonTrace ==
-    ndJsonDeserialize(JsonTracePath)
+    IF "TRACE_PATH" \in DOMAIN IOEnv THEN
+        ndJsonDeserialize(IOEnv.TRACE_PATH)
+    ELSE
+        Print(<<"Failed to validate the trace. TRACE_PATH environnement variable was expected.">>, "")
 
 TraceNoVal == "null"
+
+TraceKey ==
+    ToSet(JsonTrace[1].__config.Key)
+
+TraceVal ==
+    ToSet(JsonTrace[1].__config.Val)
+
+TraceTxId ==
+    ToSet(JsonTrace[1].__config.TxId)
 
 (* Get trace skipping config line *)
 Trace ==
@@ -27,7 +32,7 @@ AddElement(cur, val) == cur \cup {val}
 AddElements(cur, vals) == cur \cup vals
 RemoveElement(cur, val) == cur \ {val}
 Clear(cur, val) == {}
-\*RemoveKey(cur, val) == NoVal ([k \in dict DOMAIN \ {x} |-> dict[k]])
+\*RemoveKey(cur, val) == NoVal
 RemoveKey(cur, val) == [k \in DOMAIN cur |-> IF k = val THEN NoVal ELSE cur[k]]
 UpdateRec(cur, val) == [k \in DOMAIN cur |-> IF k \in DOMAIN val THEN val[k] ELSE cur[k]]
 
@@ -74,22 +79,28 @@ LOCAL ExceptAtPaths(var, varName, updates) ==
     ELSE
         applied
 
-VARIABLES   store,          \* A data store mapping keys to values.
-            tx,             \* The set of open snapshot transactions.
-            snapshotStore,  \* Snapshots of the store for each transaction.
-            written,        \* A log of writes performed within each transaction.
-            missed,          \* The set of writes invisible to each transaction.
-            i
+\*VARIABLES   store,          \* A data store mapping keys to values.
+\*            tx,             \* The set of open snapshot transactions.
+\*            snapshotStore,  \* Snapshots of the store for each transaction.
+\*            written,        \* A log of writes performed within each transaction.
+\*            missed          \* The set of writes invisible to each transaction.
+\*            i
 
-vars == <<store, tx, snapshotStore, written, missed, i>>
+\*vars == <<store, tx, snapshotStore, written, missed(*, i*)>>
 
 
 KV == INSTANCE MCKVS
 
 (* Can be generated *)
-TraceInit ==
-  /\ i = 1
-  /\ KV!Init
+\*TraceInit ==
+\*  /\ i = 1
+\*  /\ KV!Init
+
+TraceInitConstraint ==
+    \* The implementation's initial state is deterministic and known.
+    TLCGet("level") = 1 => /\ KV!Init
+
+
 
 MapVariables(t) ==
     /\
@@ -113,39 +124,51 @@ MapVariables(t) ==
         THEN missed' = ExceptAtPaths(missed, "missed", t.missed)
         ELSE TRUE
 
-ReadNext ==
-    /\ i <= Len(Trace)
-    /\ i' = i + 1
-    /\ MapVariables(Trace[i])
+TraceNextConstraint ==
+    LET i == TLCGet("level")
+    IN
+       /\ i <= Len(Trace)
+        /\ MapVariables(Trace[i])
+
+\*ReadNext ==
+\*    /\ i <= Len(Trace)
+\*    /\ i' = i + 1
+\*    /\ MapVariables(Trace[i])
+
+TraceAccepted ==
+    LET d == TLCGet("stats").diameter IN
+    IF d - 1 = Len(Trace) THEN TRUE
+    ELSE Print(<<"Failed matching the trace to (a prefix of) a behavior:", Trace[d],
+                    "TLA+ debugger breakpoint hit count " \o ToString(d+1)>>, FALSE)
 
 -----------------------------------------------------------------------------
 
 (* Infinite stuttering... *)
-term ==
-    /\ i > Len(Trace)
-    /\ UNCHANGED vars
+\*term ==
+\*    /\ i > Len(Trace)
+\*    /\ UNCHANGED vars
 
-TraceNext ==
-    \/
-        /\ ReadNext
-        /\ [KV!Next]_vars
-    \/
-        (* All trace processed case *)
-        /\ term
+\*TraceNext ==
+\*    \/
+\*        /\ ReadNext
+\*        /\ [KV!Next]_vars
+\*    \/
+\*        (* All trace processed case *)
+\*        /\ term
 
-TraceBehavior == TraceInit /\ [][TraceNext]_vars /\ WF_vars(TraceNext)
+\*TraceBehavior == TraceInit /\ [][TraceNext]_vars /\ WF_vars(TraceNext)
 
-Complete == <>[](i = Len(Trace) + 1)
+\*Complete == <>[](i = Len(Trace) + 1)
 
-THEOREM TraceBehavior => KV!Spec
-THEOREM TraceBehavior => []KV!TypeInvariant
-THEOREM TraceBehavior => []KV!TxLifecycle
+\*THEOREM TraceBehavior => KV!Spec
+\*THEOREM TraceBehavior => []KV!TypeInvariant
+\*THEOREM TraceBehavior => []KV!TxLifecycle
 
 (* Property to check *)
-Spec == KV!Spec
+\*Spec == KV!Spec
 (* Invariant *)
-TypeInvariant == KV!TypeInvariant
-TxLifecycle == KV!TxLifecycle
+\*TypeInvariant == KV!TypeInvariant
+\*TxLifecycle == KV!TxLifecycle
 -----------------------------------------------------------------------------
 
 =============================================================================

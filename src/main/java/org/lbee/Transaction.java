@@ -59,7 +59,7 @@ public class Transaction {
         this.missedLog = new HashSet<>();
         this.store = consistentStore.getStore();
         this.snapshot = new HashMap<>(store);
-        // Note: I have to trace every variable in order to avoid divergences between spec and implementation
+        // TLA Note: I have to trace every variable in order to avoid divergences between spec and implementation
         TraceSingleton.getInstance().notifyChange("snapshot", "Init", new String[] { this.guid });
         TraceSingleton.getInstance().notifyChange("snapshot", "UpdateRec", new String[] { this.guid }, snapshot);
 //        this.trackedSnapshot.notifyChange(snapshot);
@@ -166,7 +166,7 @@ public class Transaction {
     }
 
     private void cleanup() {
-        // Note: clear explicitly because it's expected by spec
+        // TLA Note: clear explicitly because it's expected by spec
         writtenLog.clear();
         missedLog.clear();
         snapshot.clear();
