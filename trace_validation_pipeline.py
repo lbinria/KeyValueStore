@@ -26,7 +26,7 @@ with open("trace-mapped.ndjson", "w") as f:
 
 print("# Convert traces for TLA+.\n")
 
-trace_tla = tla_trace_converter.run("trace-mapped.ndjson")
+trace_tla = tla_trace_converter.run("trace-mapped.ndjson", "kvs.ndjson.conf")
 # Write to file
 with open("trace-tla.ndjson", "w") as f:
     f.write(trace_tla)

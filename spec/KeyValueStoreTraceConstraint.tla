@@ -3,6 +3,7 @@
 EXTENDS TLC, Sequences, SequencesExt, Naturals, FiniteSets, Bags, Json, IOUtils, MCKVS
 
 ASSUME "TRACE_PATH" \in DOMAIN IOEnv
+ASSUME TLCGet("config").mode = "bfs"
 
 (* Read trace *)
 JsonTrace ==

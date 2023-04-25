@@ -8,27 +8,10 @@ import copy
 
 json_conf = dict()
 
-# print(json_conf)
-def null(): return "null"
-
-# Overwrite
-def default_val(name):
-    if name == 'store' or name == 'snapshot':
-        return {key : null() for key in json_conf['Key']}
-    elif name == 'transactionPool':
-        return []
-    elif name == 'writtenLog' or name == 'missedLog':
-        return {txId : [] for txId in json_conf['TxId']}
-
 def map_args(name, path, args):
     return [map_val(name, path, val) for val in args]
 
 def map_val(name, path, val):
-    # TODO move that to trace spec
-    if not val:
-        return default_val(name)
-
-
     if name == "store":
         return val
     elif name == "snapshot":
@@ -51,22 +34,6 @@ def map_name(name):
 
 def map_op(name):
     return name
-#     if name == 'set':
-#         return 'Replace'
-#     elif name == 'add':
-#         return 'AddElement'
-#     elif name == 'add_all':
-#         return 'AddElements'
-#     elif name == 'clear':
-#         return 'Clear'
-#     elif name == 'clear_record':
-#         return 'ClearRec'
-#     elif name == 'remove':
-#         return 'RemoveElement'
-#     elif name == 'remove_key':
-#         return 'RemoveKey'
-#     elif name == 'update_record':
-#         return 'UpdateRec'
 
 
 def map_event(event):
