@@ -2,15 +2,16 @@
 
 EXTENDS TLC, Sequences, SequencesExt, Naturals, FiniteSets, Bags, Json, IOUtils, MCKVS
 
-ASSUME "TRACE_PATH" \in DOMAIN IOEnv
+\*ASSUME "TRACE_PATH" \in DOMAIN IOEnv
 ASSUME TLCGet("config").mode = "bfs"
+vars == <<store, tx, snapshotStore, written, missed>>
 
 (* Read trace *)
-JsonTrace ==
-    IF "TRACE_PATH" \in DOMAIN IOEnv THEN
-        ndJsonDeserialize(IOEnv.TRACE_PATH)
-    ELSE
-        Print(<<"Failed to validate the trace. TRACE_PATH environnement variable was expected.">>, "")
+JsonTrace == ndJsonDeserialize("/home/me/Projects/KeyValueStore/trace-tla.ndjson")
+\*    IF "TRACE_PATH" \in DOMAIN IOEnv THEN
+\*        ndJsonDeserialize(IOEnv.TRACE_PATH)
+\*    ELSE
+\*        Print(<<"Failed to validate the trace. TRACE_PATH environnement variable was expected.">>, "")
 
 TraceNoVal == "null"
 
@@ -80,27 +81,23 @@ LOCAL ExceptAtPaths(var, varName, updates) ==
     ELSE
         applied
 
-\*VARIABLES   store,          \* A data store mapping keys to values.
-\*            tx,             \* The set of open snapshot transactions.
-\*            snapshotStore,  \* Snapshots of the store for each transaction.
-\*            written,        \* A log of writes performed within each transaction.
-\*            missed          \* The set of writes invisible to each transaction.
-\*            i
-
-\*vars == <<store, tx, snapshotStore, written, missed(*, i*)>>
-
 
 KV == INSTANCE MCKVS
 
-(* Can be generated *)
-\*TraceInit ==
-\*  /\ i = 1
-\*  /\ KV!Init
-
-TraceInitConstraint ==
+TraceInit ==
     \* The implementation's initial state is deterministic and known.
-    TLCGet("level") = 1 => /\ KV!Init
+    \* TLCGet("level") = 1 => /\ KV!Init
+    TRUE
 
+
+TraceSpec ==
+    \* Because of  [A]_v <=> A \/ v=v'  , the following formula is logically
+     \* equivalent to the (canonical) Spec formual  Init /\ [][Next]_vars  .  
+     \* However, TLC's breadth-first algorithm does not explore successor
+     \* states of a *seen* state.  Since one or more states may appear one or 
+     \* more times in the the trace, the  UNCHANGED vars  combined with the
+     \*  TraceView  that includes  TLCGet("level")  is our workaround. 
+    TraceInit /\ [][Next \/ UNCHANGED vars]_vars
 
 
 MapVariables(t) ==
@@ -128,13 +125,8 @@ MapVariables(t) ==
 TraceNextConstraint ==
     LET i == TLCGet("level")
     IN
-       /\ i <= Len(Trace)
+        /\ i <= Len(Trace)
         /\ MapVariables(Trace[i])
-
-\*ReadNext ==
-\*    /\ i <= Len(Trace)
-\*    /\ i' = i + 1
-\*    /\ MapVariables(Trace[i])
 
 TraceAccepted ==
     LET d == TLCGet("stats").diameter IN
@@ -142,34 +134,33 @@ TraceAccepted ==
     ELSE Print(<<"Failed matching the trace to (a prefix of) a behavior:", Trace[d],
                     "TLA+ debugger breakpoint hit count " \o ToString(d+1)>>, FALSE)
 
------------------------------------------------------------------------------
+TraceView ==
+    \* A high-level state  s  can appear multiple times in a system trace.  Including the
+     \* current level in TLC's view ensures that TLC will not stop model checking when  s
+     \* appears the second time in the trace.  Put differently,  TraceView  causes TLC to
+     \* consider  s_i  and s_j  , where  i  and  j  are the positions of  s  in the trace,
+     \* to be different states.
+    <<vars, TLCGet("level")>>
 
-(* Infinite stuttering... *)
-\*term ==
-\*    /\ i > Len(Trace)
-\*    /\ UNCHANGED vars
-
-\*TraceNext ==
-\*    \/
-\*        /\ ReadNext
-\*        /\ [KV!Next]_vars
-\*    \/
-\*        (* All trace processed case *)
-\*        /\ term
-
-\*TraceBehavior == TraceInit /\ [][TraceNext]_vars /\ WF_vars(TraceNext)
-
-\*Complete == <>[](i = Len(Trace) + 1)
-
-\*THEOREM TraceBehavior => KV!Spec
-\*THEOREM TraceBehavior => []KV!TypeInvariant
-\*THEOREM TraceBehavior => []KV!TxLifecycle
-
-(* Property to check *)
-\*Spec == KV!Spec
-(* Invariant *)
-\*TypeInvariant == KV!TypeInvariant
-\*TxLifecycle == KV!TxLifecycle
+TraceAlias ==
+    [
+        \* TODO: Funny TLCGet("level")-1 could be removed if the spec has an
+        \* TODO: auxiliary counter variable  i  .  Would also take care of 
+        \* TODO: the bug that TLCGet("level")-1 is not defined for the initial
+        \* TODO: state.
+        len |-> Len(Trace),
+        log     |-> <<TLCGet("level"), Trace[TLCGet("level")]>>,
+        snapshotStore |-> snapshotStore,
+        written |-> written,
+        enabled |-> [
+            OpenTx |-> ENABLED \E t \in TxId : OpenTx(t) /\ MapVariables(Trace[TLCGet("level")]),
+            RollbackTx |-> ENABLED \E t \in TxId : RollbackTx(t)  /\ MapVariables(Trace[TLCGet("level")]),
+            CloseTx |-> ENABLED \E t \in TxId : CloseTx(t)  /\ MapVariables(Trace[TLCGet("level")]),
+            Add |-> ENABLED \E t \in TxId, k \in Key, v \in Val : Add(t,k,v)  /\ MapVariables(Trace[TLCGet("level")]),
+            Update |-> ENABLED \E t \in TxId, k \in Key, v \in Val : Update(t,k,v)  /\ MapVariables(Trace[TLCGet("level")]),
+            Map |-> ENABLED MapVariables(Trace[TLCGet("level")])
+        ]
+    ]
 -----------------------------------------------------------------------------
 
 =============================================================================

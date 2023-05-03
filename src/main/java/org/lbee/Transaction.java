@@ -27,10 +27,6 @@ public class Transaction {
 
     private final long timeout = -1;
 
-    private final TrackedVariable<HashSet<String>> trackedWrittenLog;
-    private final TrackedVariable<HashSet<String>> trackedMissedLog;
-    private final TrackedVariable<HashMap<String, String>> trackedSnapshot;
-    private final TrackedVariable<HashMap<String, String>> trackedStore;
 
     public Transaction(ConsistentStore consistentStore, Client client) {
         // Open
@@ -62,12 +58,6 @@ public class Transaction {
         // TLA Note: I have to trace every variable in order to avoid divergences between spec and implementation
         TraceSingleton.getInstance().notifyChange("snapshot", "Init", new String[] { this.guid });
         TraceSingleton.getInstance().notifyChange("snapshot", "UpdateRec", new String[] { this.guid }, snapshot);
-//        this.trackedSnapshot.notifyChange(snapshot);
-
-        this.trackedWrittenLog = TraceSingleton.getInstance().add("writtenLog", writtenLog, this.guid);
-        this.trackedMissedLog = TraceSingleton.getInstance().add("missedLog", missedLog, this.guid);
-        this.trackedSnapshot = TraceSingleton.getInstance().add("snapshot", snapshot, this.guid);
-        this.trackedStore = TraceSingleton.getInstance().add("store", store);
 
     }
 
@@ -84,9 +74,6 @@ public class Transaction {
         snapshot.put(key, value);
         // Add key in written log
         writtenLog.add(key);
-
-//        trackedSnapshot.notifyChange(snapshot);
-//        trackedWrittenLog.notifyChange(writtenLog);
 
         // Notify modifications
         TraceSingleton.getInstance().notifyChange("snapshot", "Replace",new String[] { this.guid, key }, value);
@@ -106,8 +93,7 @@ public class Transaction {
 
         snapshot.remove(key);
         writtenLog.add(key);
-//        trackedSnapshot.notifyChange(snapshot);
-//        trackedWrittenLog.notifyChange(writtenLog);
+
         TraceSingleton.getInstance().notifyChange("snapshot", "RemoveKey", new String[]{ this.guid }, key);
         TraceSingleton.getInstance().notifyChange("written", "AddElement", new String[]{ this.guid }, key);
 
@@ -120,8 +106,7 @@ public class Transaction {
 
     public void addMissed(HashSet<String> keys) {
         missedLog.addAll(keys);
-//        trackedMissedLog.notifyChange(missedLog);
-//        TraceSingleton.getInstance().notifyChange("missed", "add_all", new String[]{}, keys);
+
         for (String key : keys)
             TraceSingleton.getInstance().notifyChange("missed", "AddElement", new String[]{ this.guid }, key);
     }
@@ -174,7 +159,6 @@ public class Transaction {
         TraceSingleton.getInstance().notifyChange("missed", "Clear", new String[]{ this.guid });
         TraceSingleton.getInstance().notifyChange("snapshot", "Init", new String[]{ this.guid });
     }
-
 
     public HashMap<String, String> getSnapshot() {
         return snapshot;
