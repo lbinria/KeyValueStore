@@ -16,13 +16,13 @@ JsonTrace == ndJsonDeserialize("/home/me/Projects/KeyValueStore/trace-tla.ndjson
 TraceNoVal == "null"
 
 TraceKey ==
-    ToSet(JsonTrace[1].__config.Key)
+    ToSet(JsonTrace[1].Key)
 
 TraceVal ==
-    ToSet(JsonTrace[1].__config.Val)
+    ToSet(JsonTrace[1].Val)
 
 TraceTxId ==
-    ToSet(JsonTrace[1].__config.TxId)
+    ToSet(JsonTrace[1].TxId)
 
 (* Get trace skipping config line *)
 Trace ==

@@ -3,7 +3,8 @@ import time
 import signal
 from subprocess import Popen, PIPE
 import run_impl
-from trace_validation_tools import tla_trace_converter
+# from trace_validation_tools import tla_trace_converter
+from trace_validation_tools import trace_merger
 
 print("# Clean up")
 
@@ -16,9 +17,16 @@ print("# Start implementation.\n")
 
 run_impl.run()
 
-print("# Convert traces for TLA+.\n")
+# print("# Convert traces for TLA+.\n")
+#
+# trace_tla = tla_trace_converter.run("kvs.ndjson", "kvs.ndjson.conf")
+# # Write to file
+# with open("trace-tla.ndjson", "w") as f:
+#     f.write(trace_tla)
 
-trace_tla = tla_trace_converter.run("kvs.ndjson", "kvs.ndjson.conf")
+print("# Merge with config.\n")
+
+trace_tla = trace_merger.run(["."], config="kvs.ndjson.conf", sort=True)
 # Write to file
 with open("trace-tla.ndjson", "w") as f:
     f.write(trace_tla)
