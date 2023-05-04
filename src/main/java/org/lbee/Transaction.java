@@ -56,8 +56,8 @@ public class Transaction {
         this.store = consistentStore.getStore();
         this.snapshot = new HashMap<>(store);
         // TLA Note: I have to trace every variable in order to avoid divergences between spec and implementation
-        TraceSingleton.getInstance().notifyChange("snapshot", "Init", new String[] { this.guid });
-        TraceSingleton.getInstance().notifyChange("snapshot", "UpdateRec", new String[] { this.guid }, snapshot);
+        TraceSingleton.getInstance().notifyChange("snapshotStore", "Init", new String[] { this.guid });
+        TraceSingleton.getInstance().notifyChange("snapshotStore", "UpdateRec", new String[] { this.guid }, snapshot);
 
     }
 
@@ -76,7 +76,7 @@ public class Transaction {
         writtenLog.add(key);
 
         // Notify modifications
-        TraceSingleton.getInstance().notifyChange("snapshot", "Replace",new String[] { this.guid, key }, value);
+        TraceSingleton.getInstance().notifyChange("snapshotStore", "Replace",new String[] { this.guid, key }, value);
         TraceSingleton.getInstance().notifyChange("written", "AddElement", new String[] { this.guid }, key);
 
         TraceSingleton.tryCommit();
@@ -94,7 +94,7 @@ public class Transaction {
         snapshot.remove(key);
         writtenLog.add(key);
 
-        TraceSingleton.getInstance().notifyChange("snapshot", "RemoveKey", new String[]{ this.guid }, key);
+        TraceSingleton.getInstance().notifyChange("snapshotStore", "RemoveKey", new String[]{ this.guid }, key);
         TraceSingleton.getInstance().notifyChange("written", "AddElement", new String[]{ this.guid }, key);
 
         TraceSingleton.tryCommit();
@@ -157,7 +157,7 @@ public class Transaction {
         snapshot.clear();
         TraceSingleton.getInstance().notifyChange("written", "Clear", new String[]{ this.guid });
         TraceSingleton.getInstance().notifyChange("missed", "Clear", new String[]{ this.guid });
-        TraceSingleton.getInstance().notifyChange("snapshot", "Init", new String[]{ this.guid });
+        TraceSingleton.getInstance().notifyChange("snapshotStore", "Init", new String[]{ this.guid });
     }
 
     public HashMap<String, String> getSnapshot() {

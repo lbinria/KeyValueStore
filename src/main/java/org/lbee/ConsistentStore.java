@@ -22,14 +22,14 @@ public class ConsistentStore {
     public ConsistentStore(HashMap<String, String> store) {
         this.store = store;
         this.transactionPool = new ArrayList<>();
-        this.trackedTransactionPool = TraceSingleton.getInstance().add("transactionPool", transactionPool);
+        this.trackedTransactionPool = TraceSingleton.getInstance().add("tx", transactionPool);
     }
 
     public synchronized Transaction open(Client client) {
         Transaction tx = new Transaction(this, client);
         transactionPool.add(tx);
 //        trackedTransactionPool.notifyChange(transactionPool);
-        TraceSingleton.getInstance().notifyChange("transactionPool", "AddElement", new String[]{}, tx);
+        TraceSingleton.getInstance().notifyChange("tx", "AddElement", new String[]{}, tx.getGuid());
 
         TraceSingleton.tryCommit();
 
@@ -66,7 +66,7 @@ public class ConsistentStore {
         // Remove from pool
         transactionPool.remove(transaction);
 //        trackedTransactionPool.notifyChange(transactionPool);
-        TraceSingleton.getInstance().notifyChange("transactionPool", "RemoveElement", new String[]{}, transaction);
+        TraceSingleton.getInstance().notifyChange("tx", "RemoveElement", new String[]{}, transaction.getGuid());
 
         TraceSingleton.tryCommit();
     }
@@ -76,7 +76,7 @@ public class ConsistentStore {
         transaction.rollback();
         transactionPool.remove(transaction);
 //        trackedTransactionPool.notifyChange(transactionPool);
-        TraceSingleton.getInstance().notifyChange("transactionPool", "RemoveElement", new String[]{}, transaction);
+        TraceSingleton.getInstance().notifyChange("tx", "RemoveElement", new String[]{}, transaction.getGuid());
 
         TraceSingleton.tryCommit();
     }

@@ -3,7 +3,6 @@ import time
 import signal
 from subprocess import Popen, PIPE
 import run_impl
-import kvs_mapper
 from trace_validation_tools import tla_trace_converter
 
 print("# Clean up")
@@ -17,16 +16,9 @@ print("# Start implementation.\n")
 
 run_impl.run()
 
-print("# Map traces.\n")
-
-trace_mapped = kvs_mapper.run("kvs.ndjson", "kvs.ndjson.conf")
-# Write to file
-with open("trace-mapped.ndjson", "w") as f:
-    f.write(trace_mapped)
-
 print("# Convert traces for TLA+.\n")
 
-trace_tla = tla_trace_converter.run("trace-mapped.ndjson", "kvs.ndjson.conf")
+trace_tla = tla_trace_converter.run("kvs.ndjson", "kvs.ndjson.conf")
 # Write to file
 with open("trace-tla.ndjson", "w") as f:
     f.write(trace_tla)
