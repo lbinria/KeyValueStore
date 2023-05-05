@@ -1,19 +1,16 @@
 package org.lbee;
 
-import org.lbee.instrumentation.TraceInstrumentation;
-import org.lbee.instrumentation.TraceProducerException;
+import org.lbee.instrumentation.clock.LogicalClock;
 
 public class Helpers {
 
-    public static boolean tryCommit(TraceInstrumentation traceInstrumentation) {
-        try {
-            traceInstrumentation.commitChanges();
-            return true;
-        } catch (TraceProducerException e) {
-            System.out.println(e.toString());
-            e.printStackTrace();
-            return false;
-        }
+    private static LogicalClock clock;
+
+    public static LogicalClock getClock() {
+        if (clock == null)
+            clock = new LogicalClock();
+
+        return clock;
     }
 
 }

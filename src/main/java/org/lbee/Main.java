@@ -27,7 +27,7 @@ public class Main {
 
         // The set of executing tasks.
         final Collection<Callable<Void>> tasks = new HashSet<>();
-        for (int i = 0; i < /* 2 */ 4; i++) {
+        for (int i = 0; i < /* 2 */ 6; i++) {
             final Client c = new Client(consistentStore, config);
             System.out.printf("Create new client %s.\n", c.getGuid());
             tasks.add(c);

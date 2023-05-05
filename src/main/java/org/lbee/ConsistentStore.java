@@ -13,8 +13,6 @@ public class ConsistentStore {
     private final HashMap<String, String> store;
     private final ArrayList<Transaction> transactionPool;
 
-    private final TrackedVariable<ArrayList<Transaction>> trackedTransactionPool;
-
     public ConsistentStore() {
         this(new HashMap<>());
     }
@@ -22,18 +20,16 @@ public class ConsistentStore {
     public ConsistentStore(HashMap<String, String> store) {
         this.store = store;
         this.transactionPool = new ArrayList<>();
-        this.trackedTransactionPool = TraceSingleton.getInstance().add("tx", transactionPool);
     }
 
     public synchronized Transaction open(Client client) {
-        Transaction tx = new Transaction(this, client);
-        transactionPool.add(tx);
-//        trackedTransactionPool.notifyChange(transactionPool);
-        TraceSingleton.getInstance().notifyChange("tx", "AddElement", new String[]{}, tx.getGuid());
+        Transaction transaction = new Transaction(this, client);
 
-        TraceSingleton.tryCommit();
+        transactionPool.add(transaction);
+        transaction.getClient().getTraceInstrumentation().notifyChange("tx", "AddElement", new String[]{}, transaction.getGuid());
 
-        return tx;
+        transaction.getClient().getTraceInstrumentation().commitChanges("OpenTx");
+        return transaction;
     }
 
     /**
@@ -59,26 +55,28 @@ public class ConsistentStore {
         // Add written log as missed for other open transactions
         for (Transaction tx : transactionPool) {
             // Note: bug found here thanks to trace (forget condition)
-            if (!tx.equals(transaction))
+            if (!tx.equals(transaction)) {
                 tx.addMissed(writtenLog);
+                for (String key : writtenLog)
+                    transaction.getClient().getTraceInstrumentation().notifyChange("missed", "AddElement", new String[]{ tx.getGuid() }, key);
+            }
         }
 
         // Remove from pool
         transactionPool.remove(transaction);
-//        trackedTransactionPool.notifyChange(transactionPool);
-        TraceSingleton.getInstance().notifyChange("tx", "RemoveElement", new String[]{}, transaction.getGuid());
+        transaction.getClient().getTraceInstrumentation().notifyChange("tx", "RemoveElement", new String[]{}, transaction.getGuid());
 
-        TraceSingleton.tryCommit();
+        transaction.getClient().getTraceInstrumentation().commitChanges("CloseTx");
     }
 
     public void rollback(Transaction transaction) {
         // Just remove transaction from pool without commit
         transaction.rollback();
         transactionPool.remove(transaction);
-//        trackedTransactionPool.notifyChange(transactionPool);
-        TraceSingleton.getInstance().notifyChange("tx", "RemoveElement", new String[]{}, transaction.getGuid());
 
-        TraceSingleton.tryCommit();
+        transaction.getClient().getTraceInstrumentation().notifyChange("tx", "RemoveElement", new String[]{}, transaction.getGuid());
+
+        transaction.getClient().getTraceInstrumentation().commitChanges("RollbackTx");
     }
 
     public long getNbOpenTransaction() {

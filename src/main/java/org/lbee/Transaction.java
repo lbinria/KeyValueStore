@@ -25,6 +25,8 @@ public class Transaction {
      */
     private final HashMap<String, String> snapshot;
 
+    private final Client client;
+
     private final long timeout = -1;
 
 
@@ -50,14 +52,15 @@ public class Transaction {
                 break;
         }
         this.guid = g;
+        this.client = client;
 
         this.writtenLog = new HashSet<>();
         this.missedLog = new HashSet<>();
         this.store = consistentStore.getStore();
         this.snapshot = new HashMap<>(store);
         // TLA Note: I have to trace every variable in order to avoid divergences between spec and implementation
-        TraceSingleton.getInstance().notifyChange("snapshotStore", "Init", new String[] { this.guid });
-        TraceSingleton.getInstance().notifyChange("snapshotStore", "UpdateRec", new String[] { this.guid }, snapshot);
+        client.getTraceInstrumentation().notifyChange("snapshotStore", "Init", new String[] { this.guid });
+        client.getTraceInstrumentation().notifyChange("snapshotStore", "UpdateRec", new String[] { this.guid }, snapshot);
 
     }
 
@@ -76,10 +79,10 @@ public class Transaction {
         writtenLog.add(key);
 
         // Notify modifications
-        TraceSingleton.getInstance().notifyChange("snapshotStore", "Replace",new String[] { this.guid, key }, value);
-        TraceSingleton.getInstance().notifyChange("written", "AddElement", new String[] { this.guid }, key);
+        client.getTraceInstrumentation().notifyChange("snapshotStore", "Replace",new String[] { this.guid, key }, value);
+        client.getTraceInstrumentation().notifyChange("written", "AddElement", new String[] { this.guid }, key);
 
-        TraceSingleton.tryCommit();
+        client.getTraceInstrumentation().commitChanges("AddOrReplace");
     }
 
     public void remove(String key) {
@@ -94,10 +97,10 @@ public class Transaction {
         snapshot.remove(key);
         writtenLog.add(key);
 
-        TraceSingleton.getInstance().notifyChange("snapshotStore", "RemoveKey", new String[]{ this.guid }, key);
-        TraceSingleton.getInstance().notifyChange("written", "AddElement", new String[]{ this.guid }, key);
+        client.getTraceInstrumentation().notifyChange("snapshotStore", "RemoveKey", new String[]{ this.guid }, key);
+        client.getTraceInstrumentation().notifyChange("written", "AddElement", new String[]{ this.guid }, key);
 
-        TraceSingleton.tryCommit();
+        client.getTraceInstrumentation().commitChanges("Remove");
     }
 
     public void read(String key) {
@@ -106,9 +109,6 @@ public class Transaction {
 
     public void addMissed(HashSet<String> keys) {
         missedLog.addAll(keys);
-
-        for (String key : keys)
-            TraceSingleton.getInstance().notifyChange("missed", "AddElement", new String[]{ this.guid }, key);
     }
 
     /**
@@ -128,11 +128,11 @@ public class Transaction {
             if (snapshot.containsKey(key)) {
                 String value = snapshot.get(key);
                 store.put(key, value);
-                TraceSingleton.getInstance().notifyChange("store", "Replace", new String[]{ key }, value);
+                client.getTraceInstrumentation().notifyChange("store", "Replace", new String[]{ key }, value);
             }
             else {
                 store.remove(key);
-                TraceSingleton.getInstance().notifyChange("store", "RemoveKey", new String[]{}, key);
+                client.getTraceInstrumentation().notifyChange("store", "RemoveKey", new String[]{}, key);
             }
         }
 //        trackedStore.notifyChange(store);
@@ -155,9 +155,9 @@ public class Transaction {
         writtenLog.clear();
         missedLog.clear();
         snapshot.clear();
-        TraceSingleton.getInstance().notifyChange("written", "Clear", new String[]{ this.guid });
-        TraceSingleton.getInstance().notifyChange("missed", "Clear", new String[]{ this.guid });
-        TraceSingleton.getInstance().notifyChange("snapshotStore", "Init", new String[]{ this.guid });
+        client.getTraceInstrumentation().notifyChange("written", "Clear", new String[]{ this.guid });
+        client.getTraceInstrumentation().notifyChange("missed", "Clear", new String[]{ this.guid });
+        client.getTraceInstrumentation().notifyChange("snapshotStore", "Init", new String[]{ this.guid });
     }
 
     public HashMap<String, String> getSnapshot() {
@@ -165,4 +165,6 @@ public class Transaction {
     }
 
     public String getGuid() { return guid; }
+
+    public Client getClient() { return client; }
 }
