@@ -1,14 +1,16 @@
 package org.lbee;
 
-import org.lbee.instrumentation.clock.LogicalClock;
+import org.lbee.instrumentation.clock.SharedClock;
+
+import java.io.IOException;
 
 public class Helpers {
 
-    private static LogicalClock clock;
+    private static SharedClock clock;
 
-    public static LogicalClock getClock() {
+    public static SharedClock getClock() throws IOException {
         if (clock == null)
-            clock = new LogicalClock();
+            clock = new SharedClock("kvs.clock");
 
         return clock;
     }

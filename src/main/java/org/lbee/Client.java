@@ -3,6 +3,7 @@ package org.lbee;
 import org.lbee.instrumentation.NDJsonTraceProducer2;
 import org.lbee.instrumentation.TraceInstrumentation;
 
+import java.io.IOException;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -27,7 +28,7 @@ public class Client implements Callable<Void> {
     // Random used to make some stochastic behavior
     private final Random random;
 
-    public Client(ConsistentStore store, Configuration config) {
+    public Client(ConsistentStore store, Configuration config) throws IOException {
         this.guid = UUID.randomUUID().toString();
         // One trace instrumentation by client / one clock for app (as algorithm works on the same machine)
         this.traceInstrumentation = new TraceInstrumentation(new NDJsonTraceProducer2("kvs_" + guid + ".ndjson"), Helpers.getClock());
@@ -65,7 +66,7 @@ public class Client implements Callable<Void> {
             // Wait some delay before opening a new transaction
             TimeUnit.SECONDS.sleep(random.nextInt(2, 6));
 
-            if (System.currentTimeMillis()-startTime >= 5 * 1000)
+            if (System.currentTimeMillis()-startTime >= 120 * 1000)
                 break;
         }
 
