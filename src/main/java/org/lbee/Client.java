@@ -1,6 +1,5 @@
 package org.lbee;
 
-import org.lbee.instrumentation.NDJsonTraceProducer2;
 import org.lbee.instrumentation.TraceInstrumentation;
 
 import java.io.IOException;
@@ -31,7 +30,7 @@ public class Client implements Callable<Void> {
     public Client(ConsistentStore store, Configuration config) throws IOException {
         this.guid = UUID.randomUUID().toString();
         // One trace instrumentation by client / one clock for app (as algorithm works on the same machine)
-        this.traceInstrumentation = new TraceInstrumentation(new NDJsonTraceProducer2("kvs_" + guid + ".ndjson"), Helpers.getClock());
+        this.traceInstrumentation = new TraceInstrumentation("kvs_" + guid + ".ndjson", Helpers.getClock());
         this.store = store;
         this.config = config;
         this.random = new Random();

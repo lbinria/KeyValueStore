@@ -1,9 +1,5 @@
 package org.lbee;
 
-import org.lbee.instrumentation.TraceInstrumentation;
-import org.lbee.instrumentation.TraceProducerException;
-import org.lbee.instrumentation.TrackedVariable;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;

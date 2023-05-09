@@ -1,11 +1,9 @@
 package org.lbee;
 
 import org.lbee.instrumentation.TraceField;
-import org.lbee.instrumentation.TraceInstrumentation;
-import org.lbee.instrumentation.TraceProducerException;
-import org.lbee.instrumentation.TrackedVariable;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
 
 public class Transaction {
 
@@ -84,7 +82,7 @@ public class Transaction {
 
         // Notify modifications
         client.getTraceInstrumentation().notifyChange("snapshotStore", "Replace",new String[] { this.guid, key }, value);
-        client.getTraceInstrumentation().notifyChange("written", "AddElement", new String[] { this.guid }, key);
+//        client.getTraceInstrumentation().notifyChange("written", "AddElement", new String[] { this.guid }, key);
 
         client.getTraceInstrumentation().commitChanges("AddOrReplace");
     }

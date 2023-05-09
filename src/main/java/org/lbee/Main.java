@@ -1,14 +1,11 @@
 package org.lbee;
 
-import com.google.gson.JsonElement;
 import org.lbee.instrumentation.ConfigurationWriter;
-import org.lbee.instrumentation.NDJsonTraceProducer;
-import org.lbee.instrumentation.TraceInstrumentation;
-import org.lbee.instrumentation.TrackedVariable;
 
-import javax.annotation.processing.SupportedSourceVersion;
 import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
