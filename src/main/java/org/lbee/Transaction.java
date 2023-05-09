@@ -7,12 +7,10 @@ import java.util.HashSet;
 
 public class Transaction {
 
-    @TraceField(name = "id")
     private final String guid;
     // Written entries log
     private final HashSet<String> writtenLog;
-
-    // Failed ? written entries
+    // Failed written entries
     private final HashSet<String> missedLog;
 
     // Reference store
@@ -25,31 +23,19 @@ public class Transaction {
 
     private final Client client;
 
-    private final long timeout = -1;
-
+    private static String generateGuid(Client client) {
+        while (true) {
+            // Pick up random tx id
+            String txId = Helpers.pickRandomTxId(client.getConfig());
+            // If no open transaction has this id we keep it
+            if (client.getStore().getTransactionPool().stream().noneMatch(t -> t.getGuid().equals(txId)))
+                return txId;
+        }
+    }
 
     public Transaction(ConsistentStore consistentStore, Client client) {
         // Open
-        //this.guid = UUID.randomUUID().toString();
-        // TODO remove just for test !
-        int i = 1;
-        String g = "t" + i;
-
-        while (true) {
-
-            boolean found = false;
-            for (Transaction tx : client.getStore().getTransactionPool()) {
-                if (tx.guid.equals(g)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (found)
-                g = "t" + (++i);
-            else
-                break;
-        }
-        this.guid = g;
+        this.guid = generateGuid(client);
         this.client = client;
 
         this.writtenLog = new HashSet<>();
@@ -62,8 +48,6 @@ public class Transaction {
         // We can uncomment lines below, but it's not mandatory (because of clean function)
 //        client.getTraceInstrumentation().notifyChange("written", "Init", new String[]{ this.guid });
 //        client.getTraceInstrumentation().notifyChange("missed", "Init", new String[]{ this.guid });
-
-
     }
 
     public void addOrReplace(String key, String value) {
@@ -82,7 +66,7 @@ public class Transaction {
 
         // Notify modifications
         client.getTraceInstrumentation().notifyChange("snapshotStore", "Replace",new String[] { this.guid, key }, value);
-//        client.getTraceInstrumentation().notifyChange("written", "AddElement", new String[] { this.guid }, key);
+        client.getTraceInstrumentation().notifyChange("written", "AddElement", new String[] { this.guid }, key);
 
         client.getTraceInstrumentation().commitChanges("AddOrReplace");
     }
@@ -137,7 +121,6 @@ public class Transaction {
                 client.getTraceInstrumentation().notifyChange("store", "RemoveKey", new String[]{}, key);
             }
         }
-//        trackedStore.notifyChange(store);
 
         // Copy for return
         final HashSet<String> writtenLogCpy = new HashSet<>(writtenLog);
@@ -160,10 +143,6 @@ public class Transaction {
         client.getTraceInstrumentation().notifyChange("written", "Clear", new String[]{ this.guid });
         client.getTraceInstrumentation().notifyChange("missed", "Clear", new String[]{ this.guid });
         client.getTraceInstrumentation().notifyChange("snapshotStore", "Init", new String[]{ this.guid });
-    }
-
-    public HashMap<String, String> getSnapshot() {
-        return snapshot;
     }
 
     public String getGuid() { return guid; }

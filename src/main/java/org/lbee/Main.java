@@ -18,7 +18,7 @@ public class Main {
         // Create a key value store
         final ConsistentStore consistentStore = new ConsistentStore();
         // Configuration
-        final Configuration config = new Configuration(List.of("k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8"), List.of("v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8"), 8);
+        final Configuration config = new Configuration(8, 8, 8, true);
         ConfigurationWriter.write("kvs.ndjson.conf", config.toHashMap());
 
         // The set of executing tasks.

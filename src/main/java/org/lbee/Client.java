@@ -1,6 +1,7 @@
 package org.lbee;
 
 import org.lbee.instrumentation.TraceInstrumentation;
+import org.lbee.instrumentation.clock.SharedClock;
 
 import java.io.IOException;
 import java.util.Random;
@@ -30,7 +31,7 @@ public class Client implements Callable<Void> {
     public Client(ConsistentStore store, Configuration config) throws IOException {
         this.guid = UUID.randomUUID().toString();
         // One trace instrumentation by client / one clock for app (as algorithm works on the same machine)
-        this.traceInstrumentation = new TraceInstrumentation("kvs_" + guid + ".ndjson", Helpers.getClock());
+        this.traceInstrumentation = new TraceInstrumentation("kvs_" + guid + ".ndjson", SharedClock.get("kvs.clock"));
         this.store = store;
         this.config = config;
         this.random = new Random();
@@ -74,9 +75,9 @@ public class Client implements Callable<Void> {
 
     private void doSomething(Transaction tx) throws InterruptedException {
         final int actionNumber = random.nextInt(0, 99);
-//        System.out.printf("Make action %s.\n", actionNumber);
+
         // Choose a key randomly
-        String key = config.keys.get(random.nextInt(config.keys.size()));
+        String key = Helpers.pickRandomKey(config);
         // Simulate some delay
         TimeUnit.MILLISECONDS.sleep(random.nextInt(100, 200));
 
@@ -87,9 +88,8 @@ public class Client implements Callable<Void> {
         // Add or replace: 75% chance
         else if (actionNumber <= 95) {
             // Choose a value randomly
-            String val = config.vals.get(random.nextInt(config.vals.size()));
+            String val = Helpers.pickRandomVal(config);
             tx.addOrReplace(key, val);
-//            tx.addOrReplace(key, UUID.randomUUID().toString());
         }
         // Remove: 5%
         else {
@@ -104,4 +104,6 @@ public class Client implements Callable<Void> {
     }
 
     public TraceInstrumentation getTraceInstrumentation() { return traceInstrumentation; }
+
+    public Configuration getConfig() { return config; }
 }
