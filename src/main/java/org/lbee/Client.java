@@ -66,7 +66,7 @@ public class Client implements Callable<Void> {
             // Wait some delay before opening a new transaction
             TimeUnit.SECONDS.sleep(random.nextInt(2, 6));
 
-            if (System.currentTimeMillis()-startTime >= 120 * 1000)
+            if (System.currentTimeMillis()-startTime >= 5 * 1000)
                 break;
         }
 

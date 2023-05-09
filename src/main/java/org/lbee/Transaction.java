@@ -59,8 +59,12 @@ public class Transaction {
         this.store = consistentStore.getStore();
         this.snapshot = new HashMap<>(store);
         // TLA Note: I have to trace every variable in order to avoid divergences between spec and implementation
-        client.getTraceInstrumentation().notifyChange("snapshotStore", "Init", new String[] { this.guid });
-        client.getTraceInstrumentation().notifyChange("snapshotStore", "UpdateRec", new String[] { this.guid }, snapshot);
+        // I use InitWithValue operation, but as variable was clean before, we can use UpdateRec directly
+        client.getTraceInstrumentation().notifyChange("snapshotStore", "InitWithValue", new String[] { this.guid }, snapshot);
+        // We can uncomment lines below, but it's not mandatory (because of clean function)
+//        client.getTraceInstrumentation().notifyChange("written", "Init", new String[]{ this.guid });
+//        client.getTraceInstrumentation().notifyChange("missed", "Init", new String[]{ this.guid });
+
 
     }
 

@@ -7,11 +7,11 @@ ASSUME TLCGet("config").mode = "bfs"
 vars == <<store, tx, snapshotStore, written, missed>>
 
 (* Read trace *)
-JsonTrace == ndJsonDeserialize("/home/me/Projects/KeyValueStore/trace-tla.ndjson")
-\*    IF "TRACE_PATH" \in DOMAIN IOEnv THEN
-\*        ndJsonDeserialize(IOEnv.TRACE_PATH)
-\*    ELSE
-\*        Print(<<"Failed to validate the trace. TRACE_PATH environnement variable was expected.">>, "")
+JsonTrace ==
+    IF "TRACE_PATH" \in DOMAIN IOEnv THEN
+        ndJsonDeserialize(IOEnv.TRACE_PATH)
+    ELSE
+        Print(<<"Failed to validate the trace. TRACE_PATH environnement variable was expected.">>, "")
 
 TraceNoVal == "null"
 
@@ -55,6 +55,7 @@ Apply(var, default, op, args) ==
     []   op = "RemoveKey" -> RemoveKey(var, args[1])
     []   op = "UpdateRec" -> UpdateRec(var, args[1])
     []   op = "Init" -> Replace(var, default)
+    []   op = "InitWithValue" -> UpdateRec(default, args[1])
 
 
 
