@@ -1,6 +1,7 @@
 package org.lbee;
 
 import org.lbee.instrumentation.ConfigurationWriter;
+import org.lbee.instrumentation.clock.SharedClock;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -14,7 +15,8 @@ import java.util.concurrent.TimeUnit;
 public class Main {
     public static void main(String[] args) throws InterruptedException, IOException {
 
-
+        // Init shared clock
+        SharedClock.get("kvs.clock").reset();
         // Create a key value store
         final ConsistentStore consistentStore = new ConsistentStore();
         // Configuration

@@ -55,7 +55,6 @@ public class ConsistentStore {
         // Remove from pool
         transactionPool.remove(transaction);
         transaction.getClient().getTraceInstrumentation().notifyChange("tx", "RemoveElement", new String[]{}, transaction.getGuid());
-        transaction.getClient().getTraceInstrumentation().commitChanges("CloseTx");
 
         // effet de bord: plus besoin de faire le test (du bug)
 
@@ -71,6 +70,8 @@ public class ConsistentStore {
             }
         }
 
+        // Keep caution to commit at the end
+        transaction.getClient().getTraceInstrumentation().commitChanges("CloseTx");
     }
 
     // private?
