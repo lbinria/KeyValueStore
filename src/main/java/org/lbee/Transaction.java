@@ -1,5 +1,9 @@
 package org.lbee;
 
+import org.lbee.instrumentation.TraceInstrumentation;
+import org.lbee.instrumentation.VirtualField;
+import org.lbee.instrumentation.VirtualUpdate;
+
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -21,6 +25,12 @@ public class Transaction {
 
     private final Client client;
 
+    private final TraceInstrumentation spec;
+    private final VirtualField specMissed;
+    private final VirtualField specWritten;
+    private final VirtualField specSnapshotStore;
+    private final VirtualField specStore;
+
     // utiliser le suivant modulo nbMax?
     private static String generateGuid(Client client) {
         while (true) {
@@ -41,12 +51,25 @@ public class Transaction {
         this.missedLog = new HashSet<>();
         this.store = consistentStore.getStore();
         this.snapshot = new HashMap<>(store);
+
+        // Init spec virtual variables
+        this.spec = consistentStore.getSpec();
+//        this.specMissed = consistentStore.getSpec().getVariable("missed").getField(this.guid);
+//        this.specWritten = consistentStore.getSpec().getVariable("written").getField(this.guid);
+//        this.specSnapshotStore = consistentStore.getSpec().getVariable("snapshotStore").getField(this.guid);
+//        this.specStore = consistentStore.getSpecStore();
+        this.specMissed = consistentStore.specMissed().getField(this.guid);
+        this.specWritten = consistentStore.specWritten().getField(this.guid);
+        this.specSnapshotStore = consistentStore.specSnapshotStore().getField(this.guid);
+        this.specStore = consistentStore.getSpecStore();
+
+
         // TLA Note: I have to trace every variable in order to avoid divergences between spec and implementation
         // I use InitWithValue operation, but as variable was clean before, we can use UpdateRec directly
-        client.getTraceInstrumentation().notifyChange("snapshotStore", "InitWithValue", new String[] { this.guid }, snapshot);
+        specSnapshotStore.init(snapshot);
         // We can uncomment lines below, but it's not mandatory (because of clean function)
-//        client.getTraceInstrumentation().notifyChange("written", "Init", new String[]{ this.guid });
-//        client.getTraceInstrumentation().notifyChange("missed", "Init", new String[]{ this.guid });
+//        specWritten.init();
+//        specMissed.init();
     }
 
     public void addOrReplace(String key, String value) {
@@ -64,10 +87,10 @@ public class Transaction {
         writtenLog.add(key);
 
         // Notify modifications
-        client.getTraceInstrumentation().notifyChange("snapshotStore", "Replace",new String[] { this.guid, key }, value);
-        client.getTraceInstrumentation().notifyChange("written", "AddElement", new String[] { this.guid }, key);
+        specSnapshotStore.getField(key).set(value);
+        specWritten.add(key);
 
-        client.getTraceInstrumentation().commitChanges("AddOrReplace");
+        spec.commitChanges("AddOrReplace");
     }
 
     public void remove(String key) {
@@ -82,10 +105,10 @@ public class Transaction {
         snapshot.remove(key);
         writtenLog.add(key);
 
-        client.getTraceInstrumentation().notifyChange("snapshotStore", "RemoveKey", new String[]{ this.guid }, key);
-        client.getTraceInstrumentation().notifyChange("written", "AddElement", new String[]{ this.guid }, key);
+        specSnapshotStore.removeKey(key);
+        specWritten.add(key);
 
-        client.getTraceInstrumentation().commitChanges("Remove");
+        spec.commitChanges("Remove");
     }
 
     public void read(String key) {
@@ -94,6 +117,9 @@ public class Transaction {
 
     public void addMissed(HashSet<String> keys) {
         missedLog.addAll(keys);
+        // TODO test with AddElements (just showing that atomic addAll is equivalent to add in loop)
+        for (String key : writtenLog)
+            specMissed.add(key);
     }
 
     /**
@@ -113,11 +139,13 @@ public class Transaction {
             if (snapshot.containsKey(key)) {
                 String value = snapshot.get(key);
                 store.put(key, value);
-                client.getTraceInstrumentation().notifyChange("store", "Replace", new String[]{ key }, value);
+//                client.getTraceInstrumentation().notifyChange("store", "Replace", new String[]{ key }, value);
+                specStore.getField(key).set(value);
             }
             else {
                 store.remove(key);
-                client.getTraceInstrumentation().notifyChange("store", "RemoveKey", new String[]{}, key);
+//                client.getTraceInstrumentation().notifyChange("store", "RemoveKey", new String[]{}, key);
+                specStore.removeKey(key);
             }
         }
 
@@ -139,12 +167,16 @@ public class Transaction {
         writtenLog.clear();
         missedLog.clear();
         snapshot.clear();
-        client.getTraceInstrumentation().notifyChange("written", "Clear", new String[]{ this.guid });
-        client.getTraceInstrumentation().notifyChange("missed", "Clear", new String[]{ this.guid });
-        client.getTraceInstrumentation().notifyChange("snapshotStore", "Init", new String[]{ this.guid });
+        specWritten.clear();
+        specMissed.clear();
+        specSnapshotStore.init();
     }
 
     public String getGuid() { return guid; }
 
     public Client getClient() { return client; }
+
+    public VirtualField getSpecMissed() {
+        return specMissed;
+    }
 }

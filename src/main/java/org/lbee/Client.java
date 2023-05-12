@@ -1,6 +1,7 @@
 package org.lbee;
 
 import org.lbee.instrumentation.TraceInstrumentation;
+import org.lbee.instrumentation.VirtualField;
 import org.lbee.instrumentation.clock.SharedClock;
 
 import java.io.IOException;
@@ -17,7 +18,7 @@ public class Client implements Callable<Void> {
     // Client guid
     private final String guid;
 
-    private final TraceInstrumentation traceInstrumentation;
+//    private final TraceInstrumentation traceInstrumentation;
 
     // Store used by client
     private final ConsistentStore store;
@@ -28,10 +29,13 @@ public class Client implements Callable<Void> {
     // Random used to make some stochastic behavior
     private final Random random;
 
+
+
+
     public Client(ConsistentStore store, Configuration config) throws IOException {
         this.guid = UUID.randomUUID().toString();
         // One trace instrumentation by client / one clock for app (as algorithm works on the same machine)
-        this.traceInstrumentation = new TraceInstrumentation("kvs_" + guid + ".ndjson", SharedClock.get("kvs.clock"));
+//        this.traceInstrumentation = new TraceInstrumentation("kvs_" + guid + ".ndjson", SharedClock.get("kvs.clock"));
         this.store = store;
         this.config = config;
         this.random = new Random();
@@ -103,7 +107,8 @@ public class Client implements Callable<Void> {
         return store;
     }
 
-    public TraceInstrumentation getTraceInstrumentation() { return traceInstrumentation; }
+//    public TraceInstrumentation getTraceInstrumentation() { return traceInstrumentation; }
 
     public Configuration getConfig() { return config; }
+
 }
