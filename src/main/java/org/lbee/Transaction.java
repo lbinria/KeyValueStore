@@ -1,7 +1,5 @@
 package org.lbee;
 
-import org.lbee.instrumentation.TraceField;
-
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -23,6 +21,7 @@ public class Transaction {
 
     private final Client client;
 
+    // utiliser le suivant modulo nbMax?
     private static String generateGuid(Client client) {
         while (true) {
             // Pick up random tx id
