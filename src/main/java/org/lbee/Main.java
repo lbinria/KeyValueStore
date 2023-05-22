@@ -6,7 +6,6 @@ import org.lbee.instrumentation.clock.SharedClock;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,7 +19,7 @@ public class Main {
         // Create a key value store
         final ConsistentStore consistentStore = new ConsistentStore();
         // Configuration
-        final Configuration config = new Configuration(8, 8, 8, true);
+        final Configuration config = new Configuration(8, 8, 8, false);
         ConfigurationWriter.write("kvs.ndjson.conf", config.toHashMap());
 
         // The set of executing tasks.

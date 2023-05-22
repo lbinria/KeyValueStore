@@ -70,7 +70,7 @@ public class Client implements Callable<Void> {
             // Wait some delay before opening a new transaction
             TimeUnit.SECONDS.sleep(random.nextInt(2, 6));
 
-            if (System.currentTimeMillis()-startTime >= 5 * 1000)
+            if (System.currentTimeMillis()-startTime >= 120 * 1000)
                 break;
         }
 
@@ -87,17 +87,17 @@ public class Client implements Callable<Void> {
 
         // Read: 20% chance
         if (actionNumber <= 19) {
-            tx.read(key);
+            store.read(tx, key);
         }
         // Add or replace: 75% chance
         else if (actionNumber <= 95) {
             // Choose a value randomly
             String val = Helpers.pickRandomVal(config);
-            tx.addOrReplace(key, val);
+            store.addOrReplace(tx, key, val);
         }
         // Remove: 5%
         else {
-            tx.remove(key);
+            store.remove(tx, key);
         }
     }
 
