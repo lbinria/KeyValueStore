@@ -31,7 +31,7 @@ Trace ==
 (* Generic operators *)
 Replace(cur, val) == val
 AddElement(cur, val) == cur \cup {val}
-AddElements(cur, vals) == cur \cup vals
+AddElements(cur, vals) == cur \cup ToSet(vals)
 RemoveElement(cur, val) == cur \ {val}
 Clear(cur, val) == {}
 \*RemoveKey(cur, val) == NoVal
