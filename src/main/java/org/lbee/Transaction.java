@@ -6,6 +6,8 @@ import org.lbee.instrumentation.VirtualUpdate;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class Transaction {
 
@@ -19,15 +21,14 @@ public class Transaction {
     private final VirtualField specMissed;
     private final VirtualField specWritten;
 
-    // utiliser le suivant modulo nbMax?
     private static String generateGuid(Client client) {
-        while (true) {
-            // Pick up random tx id
-            String txId = Helpers.pickRandomTxId(client.getConfig());
-            // If no open transaction has this id we keep it
-            if (client.getStore().getTransactionPool().stream().noneMatch(t -> t.getGuid().equals(txId)))
-                return txId;
-        }
+        final Configuration config = client.getConfig();
+        final Set<String> usedTxIds = client.getStore().getTransactionPool().stream().map(Transaction::getGuid).collect(Collectors.toSet());
+        final Set<String> allTxIds = new HashSet<>(config.getTxIds());
+        // Difference between all tx ids and used tx ids
+        allTxIds.removeAll(usedTxIds);
+        // Get first (should never crash)
+        return allTxIds.stream().findFirst().get();
     }
 
     public Transaction(ConsistentStore consistentStore, Client client) {
