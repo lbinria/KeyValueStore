@@ -15,7 +15,7 @@ public class Main {
     public static void main(String[] args) throws InterruptedException, IOException {
 
         // Init shared clock
-        SharedClock.get("kvs.clock").reset();
+        //SharedClock.get("kvs").reset();
         // Create a key value store
         final ConsistentStore consistentStore = new ConsistentStore();
         // Configuration
