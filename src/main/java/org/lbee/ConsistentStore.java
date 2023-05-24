@@ -61,7 +61,10 @@ public class ConsistentStore implements KeyValueStoreSpec {
         specSnapshotStore.getField(t.getGuid()).init(store);;
     }
 
-    public synchronized void addOrReplace(Transaction transaction, String key, String value) {
+    // Note: comment `synchronized` will introduce an error in the implementation (according to the specification)
+    // For example: some add or replace in a snapshot store can be made by a transaction `t1` at the same time of another transaction `t2` will commit
+    // Perhaps it's not a problem for the algorithm to work, but it doesn't respect the action atomicity of specification
+    public /* synchronized */ void addOrReplace(Transaction transaction, String key, String value) {
         System.out.println("addOrReplace");
 
         final HashMap<String, String> snapshot = snapshots.get(transaction.getGuid());
