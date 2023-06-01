@@ -2,7 +2,7 @@ package org.lbee;
 
 import org.lbee.instrumentation.TraceInstrumentation;
 import org.lbee.instrumentation.VirtualField;
-import org.lbee.instrumentation.clock.LogicalClock;
+import org.lbee.instrumentation.clock.ClockFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,7 +44,8 @@ public class ConsistentStore implements KeyValueStoreSpec {
         this.transactionPool = new ArrayList<>();
 
         // TODO create trace instrumentation here ! Should remove client because it's not in spec !
-        spec = new TraceInstrumentation("kvs.ndjson", new LogicalClock());
+        // spec = new TraceInstrumentation("kvs.ndjson", new LogicalClock());
+        spec = new TraceInstrumentation("kvs.ndjson", ClockFactory.getClock());
         // SpecBehavior consistentStoreBehavior.
         // Init spec virtual variables
         this.specTx = spec.getVariable("tx");
