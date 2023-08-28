@@ -29,7 +29,7 @@ print("# Start TLA+ trace spec.\n")
 
 tla_trace_validation_process = Popen([
     "python",
-    "/home/me/Projects/trace_validation_tools/tools/tla_trace_validation.py",
+    "tla_trace_validation.py",
     "spec/KeyValueStoreTraceConstraint.tla",
     "trace-tla.ndjson"])
 
