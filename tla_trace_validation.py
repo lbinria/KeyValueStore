@@ -1,6 +1,4 @@
 import os
-import time
-import signal
 from subprocess import Popen
 import sys
 

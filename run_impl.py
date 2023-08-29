@@ -1,13 +1,10 @@
-import os
-import time
-import signal
 from subprocess import Popen
 
 def run():
     impl_process = Popen([
-        "/usr/lib/jvm/jdk-19/bin/java",
+        "java",
         "-jar",
-        "target/KeyValueStore-1.0-jar-with-dependencies.jar"
+        "target/KeyValueStore-1.1-jar-with-dependencies.jar"
         ])
 
     # Wait implementation is terminated

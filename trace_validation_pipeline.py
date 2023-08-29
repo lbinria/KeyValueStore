@@ -1,9 +1,6 @@
 import os
-import time
-import signal
 from subprocess import Popen, PIPE
 import run_impl
-# from trace_validation_tools import tla_trace_converter
 from trace_validation_tools import trace_merger
 
 print("# Clean up")
@@ -30,7 +27,7 @@ print("# Start TLA+ trace spec.\n")
 tla_trace_validation_process = Popen([
     "python",
     "tla_trace_validation.py",
-    "spec/KeyValueStoreTraceConstraint.tla",
+    "spec/KeyValueStoreTrace.tla",
     "trace-tla.ndjson"])
 
 tla_trace_validation_process.wait()

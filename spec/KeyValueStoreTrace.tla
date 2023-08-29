@@ -1,151 +1,129 @@
 --------------------------- MODULE KeyValueStoreTrace ---------------------------
 
-EXTENDS TLC, Sequences, SequencesExt, Naturals, FiniteSets, Bags, Json, IOUtils
+EXTENDS TLC, Sequences, SequencesExt, Naturals, FiniteSets, Bags, Json, IOUtils, MCKVS, KeyValueStore, TVOperators, TraceSpec
 
-(* Matches the configuration of the app. *)
-CONSTANTS
-    Key,
-    Val,
-    TxId,
-    NoVal
+KVS == INSTANCE KeyValueStore
 
-JsonTracePath == IF "TRACE_PATH" \in DOMAIN IOEnv THEN IOEnv.TRACE_PATH ELSE "trace_valid_0.ndjson"
+TraceNil == "null"
 
-(* Read trace *)
-JsonTrace ==
-    ndJsonDeserialize(JsonTracePath)
+TraceKey ==
+    ToSet(JsonTrace[1].Key)
 
-TraceNoVal == "null"
+TraceVal ==
+    ToSet(JsonTrace[1].Val)
 
-(* Get trace skipping config line *)
-Trace ==
-    SubSeq(JsonTrace, 2, Len(JsonTrace))
-
-(* Generic operators *)
-Replace(cur, val) == val
-AddElement(cur, val) == cur \cup {val}
-AddElements(cur, vals) == cur \cup vals
-RemoveElement(cur, val) == cur \ {val}
-Clear(cur, val) == {}
-\*RemoveKey(cur, val) == NoVal ([k \in dict DOMAIN \ {x} |-> dict[k]])
-RemoveKey(cur, val) == [k \in DOMAIN cur |-> IF k = val THEN NoVal ELSE cur[k]]
-UpdateRec(cur, val) == [k \in DOMAIN cur |-> IF k \in DOMAIN val THEN val[k] ELSE cur[k]]
+TraceTxId ==
+    ToSet(JsonTrace[1].TxId)
 
 (* Can be extracted from init *)
-Default(varName) ==
+DefaultImpl(varName) ==
     CASE varName = "store" -> [k \in Key |-> NoVal]
     []  varName = "tx" -> {}
     []  varName = "snapshotStore" -> [t \in TxId |-> [k \in Key |-> NoVal]]
     []  varName = "written" -> [t \in TxId |-> {}]
     []  varName = "missed" -> [t \in TxId |-> {}]
 
-Apply(var, default, op, args) ==
-    CASE op = "Replace" -> Replace(var, args[1])
-    []   op = "AddElement" -> AddElement(var, args[1])
-    []   op = "AddElements" -> AddElements(var, args[1])
-    []   op = "RemoveElement" -> RemoveElement(var, args[1])
-    []   op = "Clear" -> Clear(var, <<>>)
-    []   op = "RemoveKey" -> RemoveKey(var, args[1])
-    []   op = "UpdateRec" -> UpdateRec(var, args[1])
-    []   op = "Init" -> Replace(var, default)
-
-
-
-RECURSIVE ExceptAtPath(_,_,_,_,_)
-LOCAL ExceptAtPath(var, default, path, op, args) ==
-    LET h == Head(path) IN
-    IF Len(path) > 1 THEN
-        [var EXCEPT ![h] = ExceptAtPath(var[h], default[h], Tail(path), op, args)]
-    ELSE
-        [var EXCEPT ![h] = Apply(@, default[h], op, args)]
-
-RECURSIVE ExceptAtPaths(_,_,_)
-LOCAL ExceptAtPaths(var, varName, updates) ==
-    LET update == Head(updates) IN
-
-    LET applied ==
-        IF Len(update.path) > 0 THEN
-            ExceptAtPath(var, Default(varName), update.path, update.op, update.args)
-        ELSE
-            Apply(var, Default(varName), update.op, update.args)
-    IN
-    IF Len(updates) > 1 THEN
-        ExceptAtPaths(applied, varName, Tail(updates))
-    ELSE
-        applied
-
-VARIABLES   store,          \* A data store mapping keys to values.
-            tx,             \* The set of open snapshot transactions.
-            snapshotStore,  \* Snapshots of the store for each transaction.
-            written,        \* A log of writes performed within each transaction.
-            missed,          \* The set of writes invisible to each transaction.
-            i
-
-vars == <<store, tx, snapshotStore, written, missed, i>>
-
-
-KV == INSTANCE MCKVS
-
-(* Can be generated *)
-TraceInit ==
-  /\ i = 1
-  /\ KV!Init
-
-MapVariables(t) ==
+MapVariablesImpl(t) ==
     /\
         IF "store" \in DOMAIN t
-        THEN store' = ExceptAtPaths(store, "store", t.store)
+        THEN store' = MapVariable(store, "store", t)
         ELSE TRUE
     /\
         IF "tx" \in DOMAIN t
-        THEN tx' = ExceptAtPaths(tx, "tx", t.tx)
+        THEN tx' = MapVariable(tx, "tx", t)
         ELSE TRUE
     /\
         IF "snapshotStore" \in DOMAIN t
-        THEN snapshotStore' = ExceptAtPaths(snapshotStore, "snapshotStore", t.snapshotStore)
+        THEN snapshotStore' = MapVariable(snapshotStore, "snapshotStore", t)
         ELSE TRUE
     /\
         IF "written" \in DOMAIN t
-        THEN written' = ExceptAtPaths(written, "written", t.written)
+        THEN written' = MapVariable(written, "written", t)
         ELSE TRUE
     /\
         IF "missed" \in DOMAIN t
-        THEN missed' = ExceptAtPaths(missed, "missed", t.missed)
+        THEN missed' = MapVariable(missed, "missed", t)
         ELSE TRUE
 
-ReadNext ==
-    /\ i <= Len(Trace)
-    /\ i' = i + 1
-    /\ MapVariables(Trace[i])
+IsOpenTx ==
+    /\ IsEvent("OpenTx")
+    /\
+        IF "event_args" \in DOMAIN logline THEN
+            OpenTx(logline.event_args[1])
+        ELSE
+            \E t \in TxId : OpenTx(t)
 
------------------------------------------------------------------------------
+IsRollbackTx ==
+    /\ IsEvent("RollbackTx")
+    /\
+        IF "event_args" \in DOMAIN logline THEN
+            RollbackTx(logline.event_args[1])
+        ELSE
+            \E t \in TxId : RollbackTx(t)
 
-(* Infinite stuttering... *)
-term ==
-    /\ i > Len(Trace)
-    /\ UNCHANGED vars
+IsCloseTx ==
+    /\ IsEvent("CloseTx")
+    /\
+        IF "event_args" \in DOMAIN logline THEN
+            CloseTx(logline.event_args[1])
+        ELSE
+            \E t \in TxId : CloseTx(t)
 
-TraceNext ==
-    \/
-        /\ ReadNext
-        /\ [KV!Next]_vars
-    \/
-        (* All trace processed case *)
-        /\ term
+IsAdd ==
+    /\ IsEvent("Add")
+    /\
+        IF "event_args" \in DOMAIN logline THEN
+            KVS!Add(logline.event_args[1], logline.event_args[2], logline.event_args[3])
+        ELSE
+            \E t \in TxId, k \in Key, v \in Val : KVS!Add(t, k, v)
 
-TraceBehavior == TraceInit /\ [][TraceNext]_vars /\ WF_vars(TraceNext)
+IsUpdate ==
+    /\ IsEvent("Update")
+    /\
+        IF "event_args" \in DOMAIN logline THEN
+            Update(logline.event_args[1], logline.event_args[2], logline.event_args[3])
+        ELSE
+            \E t \in TxId, k \in Key, v \in Val : Update(t, k, v)
 
-Complete == <>[](i = Len(Trace) + 1)
+IsRemove ==
+    /\ IsEvent("Remove")
+    /\
+        IF "event_args" \in DOMAIN logline THEN
+            KVS!Remove(logline.event_args[1], logline.event_args[2])
+        ELSE
+            \E t \in TxId, k \in Key : KVS!Remove(t, k)
 
-THEOREM TraceBehavior => KV!Spec
-THEOREM TraceBehavior => []KV!TypeInvariant
-THEOREM TraceBehavior => []KV!TxLifecycle
+TraceNextImpl ==
+    \/ IsOpenTx
+    \/ IsRollbackTx
+    \/ IsCloseTx
+    \/ IsAdd
+    \/ IsUpdate
+    \/ IsRemove
 
-(* Property to check *)
-Spec == KV!Spec
-(* Invariant *)
-TypeInvariant == KV!TypeInvariant
-TxLifecycle == KV!TxLifecycle
+ComposedNext == FALSE
+
+BaseSpec == Init /\ [][Next \/ ComposedNext]_vars
+
+TraceAlias ==
+    [
+        \* TODO: Funny TLCGet("level")-1 could be removed if the spec has an
+        \* TODO: auxiliary counter variable  i  .  Would also take care of
+        \* TODO: the bug that TLCGet("level")-1 is not defined for the initial
+        \* TODO: state.
+        len |-> Len(Trace),
+        log     |-> <<TLCGet("level"), Trace[TLCGet("level")]>>,
+        snapshotStore |-> snapshotStore,
+        written |-> written,
+        enabled |-> [
+            OpenTx |-> ENABLED \E t \in TxId : OpenTx(t) /\ MapVariables(Trace[TLCGet("level")]),
+            RollbackTx |-> ENABLED \E t \in TxId : RollbackTx(t)  /\ MapVariables(Trace[TLCGet("level")]),
+            CloseTx |-> ENABLED \E t \in TxId : CloseTx(t)  /\ MapVariables(Trace[TLCGet("level")]),
+            Add |-> ENABLED \E t \in TxId, k \in Key, v \in Val : KVS!Add(t,k,v)  /\ MapVariables(Trace[TLCGet("level")]),
+            Update |-> ENABLED \E t \in TxId, k \in Key, v \in Val : Update(t,k,v)  /\ MapVariables(Trace[TLCGet("level")]),
+            Map |-> ENABLED MapVariables(Trace[TLCGet("level")])
+        ]
+    ]
 -----------------------------------------------------------------------------
 
 =============================================================================

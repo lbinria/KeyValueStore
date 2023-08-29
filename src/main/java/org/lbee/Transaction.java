@@ -1,6 +1,6 @@
 package org.lbee;
 
-import org.lbee.instrumentation.TraceInstrumentation;
+import org.lbee.instrumentation.BehaviorRecorder;
 import org.lbee.instrumentation.VirtualField;
 import org.lbee.instrumentation.VirtualUpdate;
 

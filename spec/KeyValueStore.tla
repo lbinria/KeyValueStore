@@ -16,9 +16,10 @@ VARIABLES   store,          \* A data store mapping keys to values.
             written,        \* A log of writes performed within each transaction.
             missed          \* The set of writes invisible to each transaction.
 ----------------------------------------------------------------------------
-\*NoVal ==    \* Choose something to represent the absence of a value.
-\*    CHOOSE v : v \notin Val
-NoVal == "null"
+vars == <<store, tx, snapshotStore, written, missed>>
+
+NoVal ==    \* Choose something to represent the absence of a value.
+    CHOOSE v : v \notin Val
 
 Store ==    \* The set of all key-value stores.
     [Key -> Val \cup {NoVal}]

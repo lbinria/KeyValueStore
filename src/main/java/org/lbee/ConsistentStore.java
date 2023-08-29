@@ -1,9 +1,10 @@
 package org.lbee;
 
-import org.lbee.instrumentation.TraceInstrumentation;
+import org.lbee.instrumentation.BehaviorRecorder;
 import org.lbee.instrumentation.VirtualField;
 import org.lbee.instrumentation.clock.ClockFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,7 +18,7 @@ public class ConsistentStore implements KeyValueStoreSpec {
     private final HashMap<String, HashMap<String, String>> snapshots;
     private final ArrayList<Transaction> transactionPool;
 
-    private final TraceInstrumentation spec;
+    private final BehaviorRecorder spec;
 
     private final VirtualField specTx;
     private final VirtualField specStore;
@@ -25,7 +26,7 @@ public class ConsistentStore implements KeyValueStoreSpec {
     private final VirtualField specWritten;
     private final VirtualField specSnapshotStore;
 
-    public TraceInstrumentation spec() { return spec; }
+    public BehaviorRecorder spec() { return spec; }
     public VirtualField specTx() { return specTx; }
     public VirtualField specStore() { return specStore; }
     public VirtualField specMissed() { return specMissed; }
@@ -36,7 +37,17 @@ public class ConsistentStore implements KeyValueStoreSpec {
         this(new HashMap<>());
     }
 
-
+    public void tryCommitChanges(String eventName) {
+        try {
+            spec.commitChanges(eventName);
+        } catch (IOException e) {
+            try {
+                spec.commitException("commit failed.");
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+    }
 
     public ConsistentStore(HashMap<String, String> store) {
         this.store = store;
@@ -44,8 +55,7 @@ public class ConsistentStore implements KeyValueStoreSpec {
         this.transactionPool = new ArrayList<>();
 
         // TODO create trace instrumentation here ! Should remove client because it's not in spec !
-        // spec = new TraceInstrumentation("kvs.ndjson", new LogicalClock());
-        spec = new TraceInstrumentation("kvs.ndjson", ClockFactory.getClock());
+        spec = BehaviorRecorder.create("kvs.ndjson", ClockFactory.getClock());
         // SpecBehavior consistentStoreBehavior.
         // Init spec virtual variables
         this.specTx = spec.getVariable("tx");
@@ -72,6 +82,13 @@ public class ConsistentStore implements KeyValueStoreSpec {
         if (snapshot.containsKey(key) && snapshot.get(key).equals(value))
             return;
 
+        // Check if it is an Add or Update action
+        final String eventName;
+        if (snapshot.containsKey(key))
+            eventName = "Update";
+        else
+            eventName = "Add";
+
         // Change value in snapshot store
         snapshot.put(key, value);
         // Notify modifications
@@ -80,7 +97,7 @@ public class ConsistentStore implements KeyValueStoreSpec {
         // Add key in written log
         transaction.addWritten(key);
 
-        spec.commitChanges("AddOrReplace");
+        tryCommitChanges(eventName);
     }
 
     public synchronized void remove(Transaction transaction, String key) {
@@ -101,7 +118,7 @@ public class ConsistentStore implements KeyValueStoreSpec {
         // Add key in written log
         transaction.addWritten(key);
 
-        spec.commitChanges("Remove");
+        tryCommitChanges("Remove");
     }
 
     public void read(Transaction transaction, String key) {
@@ -117,7 +134,7 @@ public class ConsistentStore implements KeyValueStoreSpec {
         // pourquoi on log ici et pas dans le client? si on le fait par rapport au client (de la transaction)
         // ou plutôt pourquoi ne pas faire TraceInstrumentation[.getInstance()].notifyChange(client,...)
         specTx.add(transaction.getGuid());
-        spec.commitChanges("OpenTx");
+        tryCommitChanges("OpenTx");
         return transaction;
     }
 
@@ -153,7 +170,7 @@ public class ConsistentStore implements KeyValueStoreSpec {
         }
 
         // Keep caution to commit at the end
-        spec.commitChanges("CloseTx");
+        tryCommitChanges("CloseTx");
     }
 
     public HashSet<String> flush(Transaction tx) {
@@ -185,9 +202,8 @@ public class ConsistentStore implements KeyValueStoreSpec {
         transaction.rollback();
         transactionPool.remove(transaction);
 
-//        transaction.getClient().getTraceInstrumentation().notifyChange("tx", "RemoveElement", new String[]{}, transaction.getGuid());
         specTx.remove(transaction.getGuid());
-        spec.commitChanges("RollbackTx");
+        tryCommitChanges("RollbackTx");
     }
 
     public long getNbOpenTransaction() {
@@ -202,6 +218,6 @@ public class ConsistentStore implements KeyValueStoreSpec {
         return store;
     }
 
-    public TraceInstrumentation getSpec() { return spec; }
+    public BehaviorRecorder getSpec() { return spec; }
 
 }
