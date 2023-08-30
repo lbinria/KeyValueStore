@@ -2,6 +2,7 @@ package org.lbee;
 
 import org.lbee.instrumentation.BehaviorRecorder;
 import org.lbee.instrumentation.VirtualField;
+import org.lbee.instrumentation.clock.ClockFactory;
 import org.lbee.instrumentation.clock.SharedClock;
 
 import java.io.IOException;
@@ -21,21 +22,37 @@ public class Client implements Callable<Void> {
     // Store used by client
     private final ConsistentStore store;
 
-    // General configuration
-    private final Configuration config;
-
     // Random used to make some stochastic behavior
     private final Random random;
 
+    private final BehaviorRecorder spec;
+    private final VirtualField specTx;
+    private final VirtualField specStore;
+    private final VirtualField specMissed;
+    private final VirtualField specWritten;
+    private final VirtualField specSnapshotStore;
 
 
-
-    public Client(ConsistentStore store, Configuration config) throws IOException {
+    public Client(ConsistentStore store) throws IOException {
         this.guid = UUID.randomUUID().toString();
         this.store = store;
-        this.config = config;
         this.random = new Random();
+
+        spec = BehaviorRecorder.create("kvs_" + guid + ".ndjson", SharedClock.get("kvs.clock"));
+        // Init spec virtual variables
+        this.specTx = spec.getVariable("tx");
+        this.specStore = spec.getVariable("store");
+        this.specMissed = spec.getVariable("missed");
+        this.specWritten = spec.getVariable("written");
+        this.specSnapshotStore = spec.getVariable("snapshotStore");
     }
+
+    public BehaviorRecorder getSpec() { return spec; }
+    public VirtualField getSpecTx() { return specTx; }
+    public VirtualField getSpecStore() { return specStore; }
+    public VirtualField getSpecMissed() { return specMissed; }
+    public VirtualField getSpecWritten() { return specWritten; }
+    public VirtualField getSpecSnapshotStore() { return specSnapshotStore; }
 
     @Override
     public Void call() throws Exception {
@@ -44,7 +61,7 @@ public class Client implements Callable<Void> {
         while (true) {
 
             // Check whether we can open a new transaction
-            if (store.getNbOpenTransaction() >= config.nbTransactionLimit)
+            if (store.getNbOpenTransaction() >= store.getConfig().nbTransactionLimit)
                 continue;
 
 
@@ -77,7 +94,7 @@ public class Client implements Callable<Void> {
         final int actionNumber = random.nextInt(0, 99);
 
         // Choose a key randomly
-        String key = Helpers.pickRandomKey(config);
+        String key = Helpers.pickRandomKey(store.getConfig());
         // Simulate some delay
         TimeUnit.MILLISECONDS.sleep(random.nextInt(100, 200));
 
@@ -88,7 +105,7 @@ public class Client implements Callable<Void> {
         // Add or replace: 75% chance
         else if (actionNumber <= 95) {
             // Choose a value randomly
-            String val = Helpers.pickRandomVal(config);
+            String val = Helpers.pickRandomVal(store.getConfig());
             store.addOrReplace(tx, key, val);
         }
         // Remove: 5%
@@ -103,6 +120,16 @@ public class Client implements Callable<Void> {
         return store;
     }
 
-    public Configuration getConfig() { return config; }
+    public void tryCommitChanges(String eventName) {
+        try {
+            spec.commitChanges(eventName);
+        } catch (IOException e) {
+            try {
+                spec.commitException("commit failed.");
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+    }
 
 }

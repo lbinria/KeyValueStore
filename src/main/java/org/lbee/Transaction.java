@@ -13,6 +13,8 @@ public class Transaction {
 
     // Transaction guid
     private final String guid;
+
+    private final Client client;
     // Written entries log
     private final HashSet<String> writtenLog;
     // Failed written entries
@@ -20,9 +22,10 @@ public class Transaction {
 
     private final VirtualField specMissed;
     private final VirtualField specWritten;
+    public VirtualField getSpecMissed() { return specMissed; }
 
     private static String generateGuid(Client client) {
-        final Configuration config = client.getConfig();
+        final Configuration config = client.getStore().getConfig();
         final Set<String> usedTxIds = client.getStore().getTransactionPool().stream().map(Transaction::getGuid).collect(Collectors.toSet());
         final Set<String> allTxIds = new HashSet<>(config.getTxIds());
         // Difference between all tx ids and used tx ids
@@ -34,13 +37,13 @@ public class Transaction {
     public Transaction(ConsistentStore consistentStore, Client client) {
         // Open
         this.guid = generateGuid(client);
-
+        this.client = client;
         this.writtenLog = new HashSet<>();
         this.missedLog = new HashSet<>();
 
         // Init spec virtual variables
-        this.specMissed = consistentStore.specMissed().getField(this.guid);
-        this.specWritten = consistentStore.specWritten().getField(this.guid);
+        this.specMissed = client.getSpecMissed().getField(this.guid);
+        this.specWritten = client.getSpecWritten().getField(this.guid);
 
 
         // TLA Note: I have to trace every variable in order to avoid divergences between spec and implementation
@@ -56,12 +59,12 @@ public class Transaction {
         specWritten.add(key);
     }
 
-    public void addMissed(HashSet<String> keys) {
+    public void addMissed(Client client, HashSet<String> keys) {
         missedLog.addAll(keys);
         // Notify modification
         // Note: We can switch specMissed.addAll and for ... specMissed.add
         // The two are equivalent, we can trace multiple modifications atomically or not
-        specMissed.addAll(keys);
+        client.getSpecMissed().getField(this.guid).addAll(keys);
         /*
         for (String key : keys)
             specMissed.add(key);
@@ -98,4 +101,6 @@ public class Transaction {
     public HashSet<String> getMissedLog() {
         return missedLog;
     }
+
+    public Client getClient() { return client; }
 }

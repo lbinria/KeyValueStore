@@ -15,17 +15,18 @@ public class Main {
     public static void main(String[] args) throws InterruptedException, IOException {
 
         // Init shared clock
-        //SharedClock.get("kvs").reset();
-        // Create a key value store
-        final ConsistentStore consistentStore = new ConsistentStore();
+        SharedClock.get("kvs").reset();
         // Configuration
         final Configuration config = new Configuration(8, 8, 8, false);
         ConfigurationWriter.write("kvs.ndjson.conf", config.toHashMap());
+        // Create a key value store
+        final ConsistentStore consistentStore = new ConsistentStore(config);
+
 
         // The set of executing tasks.
         final Collection<Callable<Void>> tasks = new HashSet<>();
         for (int i = 0; i < /* 2 */ 8; i++) {
-            final Client c = new Client(consistentStore, config);
+            final Client c = new Client(consistentStore);
             System.out.printf("Create new client %s.\n", c.getGuid());
             tasks.add(c);
         }

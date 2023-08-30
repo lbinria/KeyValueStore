@@ -9,70 +9,35 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-public class ConsistentStore implements KeyValueStoreSpec {
+public class ConsistentStore /*implements KeyValueStoreSpec*/ {
 
     private final HashMap<String, String> store;
+    private final Configuration config;
     /**
      * Snapshot (copy) of reference store
      */
     private final HashMap<String, HashMap<String, String>> snapshots;
     private final ArrayList<Transaction> transactionPool;
 
-    private final BehaviorRecorder spec;
-
-    private final VirtualField specTx;
-    private final VirtualField specStore;
-    private final VirtualField specMissed;
-    private final VirtualField specWritten;
-    private final VirtualField specSnapshotStore;
-
-    public BehaviorRecorder spec() { return spec; }
-    public VirtualField specTx() { return specTx; }
-    public VirtualField specStore() { return specStore; }
-    public VirtualField specMissed() { return specMissed; }
-    public VirtualField specWritten() { return specWritten; }
-    public VirtualField specSnapshotStore() { return specSnapshotStore; }
-
-    public ConsistentStore() {
-        this(new HashMap<>());
+    public ConsistentStore(Configuration config) {
+        this(new HashMap<>(), config);
     }
 
-    public void tryCommitChanges(String eventName) {
-        try {
-            spec.commitChanges(eventName);
-        } catch (IOException e) {
-            try {
-                spec.commitException("commit failed.");
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
-            }
-        }
-    }
-
-    public ConsistentStore(HashMap<String, String> store) {
+    public ConsistentStore(HashMap<String, String> store, Configuration config) {
         this.store = store;
+        this.config = config;
         this.snapshots = new HashMap<>();
         this.transactionPool = new ArrayList<>();
-
-        // TODO create trace instrumentation here ! Should remove client because it's not in spec !
-        spec = BehaviorRecorder.create("kvs.ndjson", ClockFactory.getClock());
-        // SpecBehavior consistentStoreBehavior.
-        // Init spec virtual variables
-        this.specTx = spec.getVariable("tx");
-        this.specStore = spec.getVariable("store");
-        this.specMissed = spec.getVariable("missed");
-        this.specWritten = spec.getVariable("written");
-        this.specSnapshotStore = spec.getVariable("snapshotStore");
     }
 
     private void makeSnapshot(Transaction t) {
         // Copy store to snapshot
         this.snapshots.put(t.getGuid(), new HashMap<>(store));
         // Notify modification
-        specSnapshotStore.getField(t.getGuid()).init(store);;
+        t.getClient().getSpecSnapshotStore().getField(t.getGuid()).init(store);;
     }
 
-    public synchronized void addOrReplace(Transaction transaction, String key, String value) {
+    public void addOrReplace(Transaction transaction, String key, String value) {
         System.out.println("addOrReplace");
 
         final HashMap<String, String> snapshot = snapshots.get(transaction.getGuid());
@@ -92,15 +57,15 @@ public class ConsistentStore implements KeyValueStoreSpec {
         // Change value in snapshot store
         snapshot.put(key, value);
         // Notify modifications
-        specSnapshotStore.getField(transaction.getGuid()).getField(key).set(value);
+        transaction.getClient().getSpecSnapshotStore().getField(transaction.getGuid()).getField(key).set(value);
 
         // Add key in written log
         transaction.addWritten(key);
 
-        tryCommitChanges(eventName);
+        transaction.getClient().tryCommitChanges(eventName);
     }
 
-    public synchronized void remove(Transaction transaction, String key) {
+    public void remove(Transaction transaction, String key) {
         System.out.println("remove");
 
         final HashMap<String, String> snapshot = snapshots.get(transaction.getGuid());
@@ -113,12 +78,12 @@ public class ConsistentStore implements KeyValueStoreSpec {
 
         snapshot.remove(key);
         // Notify modifications
-        specSnapshotStore.getField(transaction.getGuid()).removeKey(key);
+        transaction.getClient().getSpecSnapshotStore().getField(transaction.getGuid()).removeKey(key);
 
         // Add key in written log
         transaction.addWritten(key);
 
-        tryCommitChanges("Remove");
+        transaction.getClient().tryCommitChanges("Remove");
     }
 
     public void read(Transaction transaction, String key) {
@@ -131,10 +96,8 @@ public class ConsistentStore implements KeyValueStoreSpec {
         makeSnapshot(transaction);
 
         transactionPool.add(transaction);
-        // pourquoi on log ici et pas dans le client? si on le fait par rapport au client (de la transaction)
-        // ou plutôt pourquoi ne pas faire TraceInstrumentation[.getInstance()].notifyChange(client,...)
-        specTx.add(transaction.getGuid());
-        tryCommitChanges("OpenTx");
+        client.getSpecTx().add(transaction.getGuid());
+        client.tryCommitChanges("OpenTx");
         return transaction;
     }
 
@@ -154,6 +117,8 @@ public class ConsistentStore implements KeyValueStoreSpec {
         return canCommit;
     }
 
+    /* Add synchronized because we make a modification on global variable transaction pool */
+    /* Two client doesn't do modification on this global variable at the same time */
     private synchronized void commit(Transaction transaction) {
 
         // Commit transaction
@@ -161,16 +126,15 @@ public class ConsistentStore implements KeyValueStoreSpec {
 
         // Remove from pool
         transactionPool.remove(transaction);
-        specTx.remove(transaction.getGuid());
+        transaction.getClient().getSpecTx().remove(transaction.getGuid());
 
         // Add written log as missed for other open transactions
         for (Transaction tx : transactionPool) {
-            // Note: bug found here thanks to trace (forget condition)
-                tx.addMissed(writtenLog);
+            tx.addMissed(transaction.getClient(), writtenLog);
         }
 
         // Keep caution to commit at the end
-        tryCommitChanges("CloseTx");
+        transaction.getClient().tryCommitChanges("CloseTx");
     }
 
     public HashSet<String> flush(Transaction tx) {
@@ -183,11 +147,11 @@ public class ConsistentStore implements KeyValueStoreSpec {
             if (snapshot.containsKey(key)) {
                 String value = snapshot.get(key);
                 store.put(key, value);
-                specStore.getField(key).set(value);
+                tx.getClient().getSpecStore().getField(key).set(value);
             }
             else {
                 store.remove(key);
-                specStore.removeKey(key);
+                tx.getClient().getSpecStore().removeKey(key);
             }
         }
 
@@ -202,8 +166,8 @@ public class ConsistentStore implements KeyValueStoreSpec {
         transaction.rollback();
         transactionPool.remove(transaction);
 
-        specTx.remove(transaction.getGuid());
-        tryCommitChanges("RollbackTx");
+        transaction.getClient().getSpecTx().remove(transaction.getGuid());
+        transaction.getClient().tryCommitChanges("RollbackTx");
     }
 
     public long getNbOpenTransaction() {
@@ -218,6 +182,5 @@ public class ConsistentStore implements KeyValueStoreSpec {
         return store;
     }
 
-    public BehaviorRecorder getSpec() { return spec; }
-
+    public Configuration getConfig() { return config; }
 }

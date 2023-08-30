@@ -1,5 +1,6 @@
 import os
 from subprocess import Popen, PIPE
+import subprocess
 import run_impl
 from trace_validation_tools import trace_merger
 
@@ -9,6 +10,10 @@ trace_files = [f for f in os.listdir(".") if f.endswith('.ndjson')]
 print(f"Cleanup: {trace_files}")
 for trace_file in trace_files:
     os.remove(trace_file)
+
+print("# Compile.\n")
+
+subprocess.run(["mvn", "package"])
 
 print("# Start implementation.\n")
 
