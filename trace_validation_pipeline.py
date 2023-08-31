@@ -1,8 +1,8 @@
 import os
-from subprocess import Popen, PIPE
 import subprocess
 import run_impl
-from trace_validation_tools import trace_merger
+import trace_merger
+import tla_trace_validation
 import argparse
 
 parser = argparse.ArgumentParser(
@@ -37,13 +37,6 @@ with open("trace-tla.ndjson", "w") as f:
 
 print("# Start TLA+ trace spec.\n")
 
-
-tla_trace_validation_process = Popen([
-    "python",
-    "tla_trace_validation.py",
-    "spec/KeyValueStoreTrace.tla",
-    "trace-tla.ndjson"])
-
-tla_trace_validation_process.wait()
+tla_trace_validation.run_tla("spec/KeyValueStoreTrace.tla","trace-tla.ndjson")
 
 print("End pipeline.")
