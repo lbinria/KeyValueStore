@@ -3,6 +3,15 @@ from subprocess import Popen, PIPE
 import subprocess
 import run_impl
 from trace_validation_tools import trace_merger
+import argparse
+
+parser = argparse.ArgumentParser(
+    prog='Trace validation pipeline',
+    description='This program aims to execute a pipeline that validate implementation of KeyValueStore against a formal spec.')
+
+parser.add_argument('-c', '--compile', type=bool, action=argparse.BooleanOptionalAction)
+
+args = parser.parse_args()
 
 print("# Clean up")
 
@@ -11,9 +20,9 @@ print(f"Cleanup: {trace_files}")
 for trace_file in trace_files:
     os.remove(trace_file)
 
-print("# Compile.\n")
-
-subprocess.run(["mvn", "package"])
+if args.compile:
+    print("# Compile.\n")
+    subprocess.run(["mvn", "package"])
 
 print("# Start implementation.\n")
 
