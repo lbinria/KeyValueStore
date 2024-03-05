@@ -1,8 +1,7 @@
 package org.lbee;
 
 import org.lbee.instrumentation.BehaviorRecorder;
-import org.lbee.instrumentation.VirtualField;
-import org.lbee.instrumentation.VirtualUpdate;
+import org.lbee.instrumentation.trace.VirtualField;
 
 import java.util.HashMap;
 import java.util.HashSet;
