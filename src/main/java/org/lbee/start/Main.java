@@ -15,9 +15,10 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Future;
 
 import org.lbee.client.Client;
 import org.lbee.store.KeyExistsException;
@@ -32,7 +33,7 @@ public class Main {
 
         Store store = new Store();
 
-        final Collection<Callable<Void>> tasks = new HashSet<>();
+        final Collection<Callable<Boolean>> tasks = new HashSet<>();
         for (int i = 0; i < 8; i++) {
             final Client c = new Client(store, keys, vals);
             System.out.printf("Create new client.\n");
@@ -41,11 +42,18 @@ public class Main {
 
         // Run all tasks concurrently.
         final ExecutorService pool = Executors.newCachedThreadPool();
-        pool.invokeAll(tasks);
+        Collection<Future<Boolean>> future = pool.invokeAll(tasks);
+        for (Future<Boolean> f : future) {
+            // Boolean result = null;
+            try {
+                f.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
 
-        // This will never be reached.
         pool.shutdown();
-        pool.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+        // pool.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
 
         System.out.println(store);
     }

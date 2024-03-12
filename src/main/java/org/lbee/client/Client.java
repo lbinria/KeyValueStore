@@ -16,7 +16,7 @@ import org.lbee.store.ValueExistsException;
 /**
  * Key value store consumer
  */
-public class Client implements Callable<Void> {
+public class Client implements Callable<Boolean> {
     // Client guid
     private final int guid;
     // Store used by client
@@ -37,7 +37,8 @@ public class Client implements Callable<Void> {
     }
 
     @Override
-    public Void call() throws Exception {
+    public Boolean call() throws Exception {
+        boolean commitSucceed = false;
         long startTime = System.currentTimeMillis();
 
         while (true) {
@@ -56,7 +57,7 @@ public class Client implements Callable<Void> {
             System.out.printf("Done with requests for %s.\n", tx);
 
             // Try to commit
-            boolean commitSucceed = store.close(tx);
+            commitSucceed = store.close(tx);
             if (commitSucceed) {
                 System.out.printf("--- Commit transaction %s from client %s.\n", tx, guid);
             } else {
@@ -69,7 +70,7 @@ public class Client implements Callable<Void> {
             if (System.currentTimeMillis() - startTime >= 15 * 1000)
                 break;
         }
-        return null;
+        return commitSucceed;
     }
 
     private void doSomething(Transaction tx) {
