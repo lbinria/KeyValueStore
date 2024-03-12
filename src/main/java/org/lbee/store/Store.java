@@ -111,7 +111,6 @@ public class Store {
         // Add written log as missed for other open transactions
         for (Transaction tx : openTransactions) {
             missed.get(tx).addAll(written.get(transaction));
-            System.out.println("Missed ("+tx+"): "+missed.get(tx));
         }
         // remove the transaction from the pool, snapshots, written and missed
         openTransactions.remove(transaction);

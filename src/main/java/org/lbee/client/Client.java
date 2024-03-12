@@ -47,7 +47,7 @@ public class Client implements Callable<Boolean> {
             System.out.printf("-- Open a new transaction %s from client %s.\n", tx, guid);
 
             // Do some update, read, delete
-            int nRequest = random.nextInt(30);
+            int nRequest = random.nextInt(10);
             System.out.printf("Making %s request for %s.\n", nRequest,tx);
             for (int i = 0; i < nRequest; i++) {
                 this.doSomething(tx);
