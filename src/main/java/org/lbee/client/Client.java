@@ -77,7 +77,7 @@ public class Client implements Callable<Boolean> {
         // pick an action for read, add, replace, remove
         final int actionNumber = random.nextInt(0, 99);
         // Choose a random key from the list of keys
-        String key = keys.get(random.nextInt(0, keys.size() - 1));
+        String key = keys.get(random.nextInt(0, keys.size()));
 
         // Read: 20% chance
         if (actionNumber <= 19) {
@@ -86,8 +86,8 @@ public class Client implements Callable<Boolean> {
         // Add or replace: 75% chance
         else if (actionNumber <= 95) {
             // Choose a value randomly
-            String val = values.get(random.nextInt(0, values.size() - 1));
-            if (actionNumber % 5 == 0) {
+            String val = values.get(random.nextInt(0, values.size()));
+            if (actionNumber % 5 != 0) {
                 try {
                     store.add(tx, key, val);
                 } catch (KeyExistsException e) {
@@ -95,12 +95,6 @@ public class Client implements Callable<Boolean> {
                 }
             } else {
                 try {
-                    // in most of the cases update an existing key
-                    // if (actionNumber % 2 != 0) {
-                    Set<String> skeys = store.getKeys();
-                    // pick a random key from skeys
-                    key = skeys.stream().skip(random.nextInt(skeys.size() - 1)).findFirst().orElse("key");
-                    // }
                     store.update(tx, key, val);
                 } catch (KeyNotExistsException | ValueExistsException e) {
                     System.out.println("*** Key " + key + " doesn't exist or already the same valule");
