@@ -1,7 +1,6 @@
 package org.lbee.client;
 
 import java.io.IOException;
-import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -34,8 +33,8 @@ public class ClientSimple implements Callable<Boolean> {
             store.add(tx, "K2", "V2");
         } else {
             TimeUnit.SECONDS.sleep(2);
-            String v1 = store.read(tx, "K1");
-            String v2 = store.read(tx, "K2");
+            String v1 = store.read("K1");
+            String v2 = store.read("K2");
             if (guid == 1) {
                 store.add(tx, "K1", v1+"-1");
             } else {

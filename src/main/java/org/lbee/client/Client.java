@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -81,7 +80,7 @@ public class Client implements Callable<Void> {
 
         // Read: 20% chance
         if (actionNumber <= 19) {
-            String value = store.read(tx, key);
+            store.read(key);
         }
         // Add or replace: 75% chance
         else if (actionNumber <= 95) {

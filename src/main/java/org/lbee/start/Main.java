@@ -6,6 +6,7 @@ import java.io.IOException;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
@@ -21,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 import org.lbee.client.Client;
 import org.lbee.store.KeyExistsException;
 import org.lbee.store.Store;
-import org.lbee.store.Transaction;
 
 public class Main {
     public static void main(String[] args) throws InterruptedException, IOException, KeyExistsException {
@@ -51,31 +51,33 @@ public class Main {
     }
 
     private static void readConfig(String path, List<String> keys, List<String> values, List<String> txIds) throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(path));
+        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
+            String line = reader.readLine();
+            if (line == null) {
+                throw new IOException("Configuration file must contains one json object. Invalid configuration file.");
+            }
+            JsonElement jsonLine = JsonParser.parseString(line);
+            if (!jsonLine.isJsonObject()) {
+                throw new IOException("Configuration file must contains one json object. Invalid configuration file.");
+            }
+            JsonObject config = jsonLine.getAsJsonObject();
 
-        String line = reader.readLine();
-        if (line == null) {
-            throw new IOException("Configuration file must contains one json object. Invalid configuration file.");
-        }
-        JsonElement jsonLine = JsonParser.parseString(line);
-        if (!jsonLine.isJsonObject()) {
-            throw new IOException("Configuration file must contains one json object. Invalid configuration file.");
-        }
-        JsonObject config = jsonLine.getAsJsonObject();
-
-        Gson gson = new Gson();
-        Type listType = new TypeToken<List<String>>() {}.getType();
-        List<String> ks = gson.fromJson(config.get("Key").getAsJsonArray(), listType);
-        for(String k : ks) {
-            keys.add(k);
-        }
-        List<String> vs = gson.fromJson(config.get("Val").getAsJsonArray(), listType);
-        for(String v : vs) {
-            values.add(v);
-        }
-        List<String> txs = gson.fromJson(config.get("TxId").getAsJsonArray(), listType); 
-        for(String t : txs) {
-            txIds.add(t);
+            Gson gson = new Gson();
+            Type listType = new TypeToken<List<String>>() {}.getType();
+            List<String> ks = gson.fromJson(config.get("Key").getAsJsonArray(), listType);
+            for(String k : ks) {
+                keys.add(k);
+            }
+            List<String> vs = gson.fromJson(config.get("Val").getAsJsonArray(), listType);
+            for(String v : vs) {
+                values.add(v);
+            }
+            List<String> txs = gson.fromJson(config.get("TxId").getAsJsonArray(), listType); 
+            for(String t : txs) {
+                txIds.add(t);
+            }
+        } catch (JsonSyntaxException e) {
+            System.out.println("Invalid json syntax in configuration file.");
         }
     }
 }
