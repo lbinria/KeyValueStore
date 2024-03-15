@@ -1,50 +1,54 @@
 --------------------------- MODULE KeyValueStoreTrace ---------------------------
 
-EXTENDS TLC, Sequences, SequencesExt, Naturals, FiniteSets, Bags, Json, IOUtils, MCKVS, KeyValueStore, TVOperators, TraceSpec
+EXTENDS TLC, Sequences, SequencesExt, Naturals, FiniteSets, Bags, Json, IOUtils, KeyValueStore, TVOperators, TraceSpec
 
 KVS == INSTANCE KeyValueStore
 
+(* Override CONSTANTS *)
+
+(* Replace Nil constant *)
 TraceNil == "null"
 
 TraceKey ==
-    ToSet(JsonTrace[1].Key)
+    ToSet(Config[1].Key)
 
 TraceVal ==
-    ToSet(JsonTrace[1].Val)
+    ToSet(Config[1].Val)
 
 TraceTxId ==
-    ToSet(JsonTrace[1].TxId)
+    ToSet(Config[1].TxId)
 
 (* Can be extracted from init *)
-DefaultImpl(varName) ==
+DefaultImplementation(varName) ==
     CASE varName = "store" -> [k \in Key |-> NoVal]
     []  varName = "tx" -> {}
     []  varName = "snapshotStore" -> [t \in TxId |-> [k \in Key |-> NoVal]]
     []  varName = "written" -> [t \in TxId |-> {}]
     []  varName = "missed" -> [t \in TxId |-> {}]
 
-MapVariablesImpl(t) ==
+UpdateVariablesImplementation(t) ==
     /\
         IF "store" \in DOMAIN t
-        THEN store' = MapVariable(store, "store", t)
+        THEN store' = UpdateVariable(store, "store", t)
         ELSE TRUE
     /\
         IF "tx" \in DOMAIN t
-        THEN tx' = MapVariable(tx, "tx", t)
+        THEN tx' = UpdateVariable(tx, "tx", t)
         ELSE TRUE
     /\
         IF "snapshotStore" \in DOMAIN t
-        THEN snapshotStore' = MapVariable(snapshotStore, "snapshotStore", t)
+        THEN snapshotStore' = UpdateVariable(snapshotStore, "snapshotStore", t)
         ELSE TRUE
     /\
         IF "written" \in DOMAIN t
-        THEN written' = MapVariable(written, "written", t)
+        THEN written' = UpdateVariable(written, "written", t)
         ELSE TRUE
     /\
         IF "missed" \in DOMAIN t
-        THEN missed' = MapVariable(missed, "missed", t)
+        THEN missed' = UpdateVariable(missed, "missed", t)
         ELSE TRUE
 
+(* Predicate actions *)
 IsOpenTx ==
     /\ IsEvent("OpenTx")
     /\
@@ -93,7 +97,7 @@ IsRemove ==
         ELSE
             \E t \in TxId, k \in Key : KVS!Remove(t, k)
 
-TraceNextImpl ==
+TraceNextImplementation ==
     \/ IsOpenTx
     \/ IsRollbackTx
     \/ IsCloseTx
@@ -116,12 +120,12 @@ TraceAlias ==
         snapshotStore |-> snapshotStore,
         written |-> written,
         enabled |-> [
-            OpenTx |-> ENABLED \E t \in TxId : OpenTx(t) /\ MapVariables(Trace[TLCGet("level")]),
-            RollbackTx |-> ENABLED \E t \in TxId : RollbackTx(t)  /\ MapVariables(Trace[TLCGet("level")]),
-            CloseTx |-> ENABLED \E t \in TxId : CloseTx(t)  /\ MapVariables(Trace[TLCGet("level")]),
-            Add |-> ENABLED \E t \in TxId, k \in Key, v \in Val : KVS!Add(t,k,v)  /\ MapVariables(Trace[TLCGet("level")]),
-            Update |-> ENABLED \E t \in TxId, k \in Key, v \in Val : Update(t,k,v)  /\ MapVariables(Trace[TLCGet("level")]),
-            Map |-> ENABLED MapVariables(Trace[TLCGet("level")])
+            OpenTx |-> ENABLED \E t \in TxId : OpenTx(t) /\ UpdateVariables(Trace[TLCGet("level")]),
+            RollbackTx |-> ENABLED \E t \in TxId : RollbackTx(t)  /\ UpdateVariables(Trace[TLCGet("level")]),
+            CloseTx |-> ENABLED \E t \in TxId : CloseTx(t)  /\ UpdateVariables(Trace[TLCGet("level")]),
+            Add |-> ENABLED \E t \in TxId, k \in Key, v \in Val : KVS!Add(t,k,v)  /\ UpdateVariables(Trace[TLCGet("level")]),
+            Update |-> ENABLED \E t \in TxId, k \in Key, v \in Val : Update(t,k,v)  /\ UpdateVariables(Trace[TLCGet("level")]),
+            Map |-> ENABLED UpdateVariables(Trace[TLCGet("level")])
         ]
     ]
 -----------------------------------------------------------------------------

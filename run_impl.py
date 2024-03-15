@@ -3,8 +3,9 @@ from subprocess import Popen
 def run():
     impl_process = Popen([
         "java",
-        "-jar",
-        "target/KeyValueStore-1.1-jar-with-dependencies.jar"
+        "-cp",
+        "target/KeyValueStore-1.2-jar-with-dependencies.jar",
+        "org.lbee.start.MainSimple"
         ])
 
     # Wait implementation is terminated

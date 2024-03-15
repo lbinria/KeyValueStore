@@ -10,12 +10,18 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.lbee.client.ClientSimple;
+import org.lbee.instrumentation.clock.ClockException;
+import org.lbee.instrumentation.clock.ClockFactory;
+import org.lbee.instrumentation.trace.TLATracer;
 import org.lbee.store.KeyExistsException;
 import org.lbee.store.Store;
 
 public class MainSimple {
-    public static void main(String[] args) throws InterruptedException, IOException, KeyExistsException {
-        Store store = new Store();
+    public static void main(String[] args) throws InterruptedException, IOException, KeyExistsException, ClockException {
+        // Store store = new Store();
+        TLATracer tracer = TLATracer.getTracer("store.ndjson",
+                ClockFactory.getClock(ClockFactory.MEMORY));
+        Store store = new Store(tracer);
 
         final Collection<Callable<Boolean>> tasks = new HashSet<>();
 
@@ -33,14 +39,14 @@ public class MainSimple {
         tasks.add(c3);
 
         future = pool.invokeAll(tasks);
-        for (Future<Boolean> f : future) {
-            // Boolean result = null;
-            try {
-                f.get();
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
-        }
+        // for (Future<Boolean> f : future) {
+        //     // Boolean result = null;
+        //     try {
+        //         f.get();
+        //     } catch (InterruptedException | ExecutionException e) {
+        //         e.printStackTrace();
+        //     }
+        // }
 
         pool.shutdown();
         // pool.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);

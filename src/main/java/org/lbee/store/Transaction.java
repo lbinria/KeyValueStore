@@ -2,18 +2,18 @@ package org.lbee.store;
 
 public class Transaction {
     // transaction guid
-    private final long guid;
+    private final long id;
     // constructor
     public Transaction(long guid) {
-        this.guid = guid;
+        this.id = guid;
     }
     // getter
-    public long getGuid() {
-        return guid;
+    public long getId() {
+        return id;
     }
     // print transaction
     @Override
     public String toString() {
-        return "T_" + guid;
+        return "T_" + id;
     }
 }

@@ -1,11 +1,15 @@
 package org.lbee.store;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.lbee.instrumentation.trace.TLATracer;
+import org.lbee.instrumentation.trace.VirtualField;
 
 public class Store {
 
@@ -17,6 +21,11 @@ public class Store {
     private final Map<Transaction, Set<String>> written;
     private final Map<Transaction, Set<String>> missed;
 
+    // Tracing
+    private TLATracer tracer;
+    private VirtualField traceTx;
+    private VirtualField traceWritten;
+
     public Store() {
         this.store = new HashMap<>();
         this.snapshots = new HashMap<>();
@@ -25,7 +34,14 @@ public class Store {
         this.missed = new HashMap<>();
     }
 
-    public synchronized Transaction open() {
+    public Store(TLATracer tracer) {
+        this();
+        this.tracer = tracer;
+        this.traceTx = tracer.getVariableTracer("tx");
+        this.traceWritten = tracer.getVariableTracer("written");
+    }
+
+    public synchronized Transaction open() throws IOException {
         // TODO: synchronize only on lastTransactionId
         Transaction transaction = new Transaction(this.lastTransactionId++);
         openTransactions.add(transaction);
@@ -35,10 +51,14 @@ public class Store {
 
         System.out.println("Open " + transaction);
         
+        this.traceTx.add(transaction.getId()+"");
+        this.traceWritten.getField(transaction.getId()+"").clear();
+        this.tracer.log();
+
         return transaction;
     }
 
-    public void add(Transaction transaction, String key, String value) throws KeyExistsException {
+    public void add(Transaction transaction, String key, String value) throws KeyExistsException, IOException {
         System.out.println("Add (" + transaction + "): " + key + " " + value);
 
         final Map<String, String> snapshot = snapshots.get(transaction);
@@ -49,10 +69,13 @@ public class Store {
         // Change value in snapshot store
         snapshot.put(key, value);
         written.get(transaction).add(key);
-        // TODO: Log modifications
+
+        // trace
+        this.traceWritten.getField(transaction.getId()+"").add(key);
+        this.tracer.log();
     }
 
-    public void update(Transaction transaction, String key, String value) throws KeyNotExistsException, ValueExistsException {
+    public void update(Transaction transaction, String key, String value) throws KeyNotExistsException, ValueExistsException, IOException {
         System.out.println("Update (" + transaction + "): " + key + " " + value);
 
         final Map<String, String> snapshot = snapshots.get(transaction);
@@ -66,10 +89,13 @@ public class Store {
         // Change value in snapshot store
         snapshot.put(key, value);
         written.get(transaction).add(key);
-        // TODO: Log modifications
+        
+        // trace
+        this.traceWritten.getField(transaction.getId()+"").add(key);
+        this.tracer.log();
     }
 
-    public void remove(Transaction transaction, String key) throws KeyNotExistsException {
+    public void remove(Transaction transaction, String key) throws KeyNotExistsException, IOException {
         System.out.println("Remove (" + transaction + "): " + key);
 
         final Map<String, String> snapshot = snapshots.get(transaction);
@@ -79,7 +105,10 @@ public class Store {
         }
         snapshot.remove(key);
         written.get(transaction).add(key);
-        // TODO: Log modifications
+
+        // trace
+        this.traceWritten.getField(transaction.getId()+"").add(key);
+        this.tracer.log();
     }
 
     public String read(String key) {
@@ -88,9 +117,10 @@ public class Store {
         return store.get(key);
     }
 
-    public synchronized boolean close(Transaction transaction) {
+    public synchronized boolean close(Transaction transaction) throws IOException {
         // compute the intersection between written and missed
-        final Set<String> intersection = new HashSet<>(written.get(transaction));
+        // Set<String> intersection = new HashSet<>(written.get(transaction));
+        Set<String> intersection = written.get(transaction);
         intersection.retainAll(missed.get(transaction));
         // System.out.println("Close: ("+transaction+"): written: "+written.get(transaction)+", missed: "+missed.get(transaction)+", intersection: "+intersection);
         // check if the the intersection of written and missed is empty; rollback if not
@@ -118,12 +148,12 @@ public class Store {
         written.remove(transaction);
         missed.remove(transaction);
         System.out.println("Commit (" + transaction + "): " + snapshot);
-        return true;
-    }
 
-    // get the set of keys in the store
-    public Set<String> getKeys() {
-        return store.keySet();
+        // trace
+        this.traceTx.remove(transaction.getId()+"");
+        this.traceWritten.getField(transaction.getId()+"").clear();
+        this.tracer.log();
+        return true;
     }
 
     public String toString() {

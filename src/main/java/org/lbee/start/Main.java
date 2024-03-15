@@ -21,17 +21,22 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.lbee.client.Client;
+import org.lbee.instrumentation.clock.ClockException;
+import org.lbee.instrumentation.clock.ClockFactory;
+import org.lbee.instrumentation.trace.TLATracer;
 import org.lbee.store.KeyExistsException;
 import org.lbee.store.Store;
 
 public class Main {
-    public static void main(String[] args) throws InterruptedException, IOException, KeyExistsException {
+    public static void main(String[] args) throws InterruptedException, IOException, KeyExistsException, ClockException {
         List<String> keys = new ArrayList<>();
         List<String> vals = new ArrayList<>();
         List<String> txIds = new ArrayList<>();
         readConfig("conf.ndjson", keys, vals, txIds);
 
-        Store store = new Store();
+        TLATracer tracer = TLATracer.getTracer("store.ndjson",
+                ClockFactory.getClock(ClockFactory.MEMORY));
+        Store store = new Store(tracer);
 
         final Collection<Callable<Boolean>> tasks = new HashSet<>();
         for (int i = 0; i < 8; i++) {
@@ -58,7 +63,8 @@ public class Main {
         System.out.println(store);
     }
 
-    private static void readConfig(String path, List<String> keys, List<String> values, List<String> txIds) throws IOException {
+    private static void readConfig(String path, List<String> keys, List<String> values, List<String> txIds)
+            throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
             String line = reader.readLine();
             if (line == null) {
@@ -71,17 +77,18 @@ public class Main {
             JsonObject config = jsonLine.getAsJsonObject();
 
             Gson gson = new Gson();
-            Type listType = new TypeToken<List<String>>() {}.getType();
+            Type listType = new TypeToken<List<String>>() {
+            }.getType();
             List<String> ks = gson.fromJson(config.get("Key").getAsJsonArray(), listType);
-            for(String k : ks) {
+            for (String k : ks) {
                 keys.add(k);
             }
             List<String> vs = gson.fromJson(config.get("Val").getAsJsonArray(), listType);
-            for(String v : vs) {
+            for (String v : vs) {
                 values.add(v);
             }
-            List<String> txs = gson.fromJson(config.get("TxId").getAsJsonArray(), listType); 
-            for(String t : txs) {
+            List<String> txs = gson.fromJson(config.get("TxId").getAsJsonArray(), listType);
+            for (String t : txs) {
                 txIds.add(t);
             }
         } catch (JsonSyntaxException e) {

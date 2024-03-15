@@ -3,7 +3,6 @@ package org.lbee.client;
 import java.io.IOException;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -92,12 +91,16 @@ public class Client implements Callable<Boolean> {
                     store.add(tx, key, val);
                 } catch (KeyExistsException e) {
                     System.out.println("*** Key " + key + " already exists");
+                } catch (IOException e) {
+                    System.out.println("Tracing error");
                 }
             } else {
                 try {
                     store.update(tx, key, val);
                 } catch (KeyNotExistsException | ValueExistsException e) {
                     System.out.println("*** Key " + key + " doesn't exist or already the same valule");
+                } catch (IOException e) {
+                    System.out.println("Tracing error");
                 }
             }
         }
@@ -107,6 +110,8 @@ public class Client implements Callable<Boolean> {
                 store.remove(tx, key);
             } catch (KeyNotExistsException e) {
                 System.out.println("*** Key " + key + " doesn't exist");
+            } catch (IOException e) {
+                System.out.println("Tracing error");
             }
         }
     }
