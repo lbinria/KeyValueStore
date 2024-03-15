@@ -53,7 +53,10 @@ public class Store {
         
         this.traceTx.add(transaction.getId()+"");
         this.traceWritten.getField(transaction.getId()+"").clear();
+        // either the "OpenTx" or the "CloseTx" should be specified to
+        // detect wrong commits
         this.tracer.log("OpenTx");
+        // this.tracer.log();
 
         return transaction;
     }
@@ -119,10 +122,10 @@ public class Store {
 
     public synchronized boolean close(Transaction transaction) throws IOException {
         // compute the intersection between written and missed
-        Set<String> intersection = new HashSet<>(written.get(transaction));
+        // Set<String> intersection = new HashSet<>(written.get(transaction));
         // if we forget to make a defensive copy, the intersection computation 
         // modifies the original set and the rollback will not work
-        // Set<String> intersection = written.get(transaction);
+        Set<String> intersection = written.get(transaction);
         intersection.retainAll(missed.get(transaction));
         // System.out.println("Close: ("+transaction+"): written: "+written.get(transaction)+", missed: "+missed.get(transaction)+", intersection: "+intersection);
         // check if the the intersection of written and missed is empty; rollback if not
@@ -137,7 +140,8 @@ public class Store {
             // trace
             this.traceTx.remove(transaction.getId()+"");
             this.traceWritten.getField(transaction.getId()+"").clear();
-            this.tracer.log("RollbackTx");
+            this.tracer.log();
+            // this.tracer.log("RollbackTx");
             return false;
         }
         // add the operation from snapshot to store
@@ -159,7 +163,8 @@ public class Store {
         // trace
         this.traceTx.remove(transaction.getId()+"");
         this.traceWritten.getField(transaction.getId()+"").clear();
-        this.tracer.log("CloseTx");
+        this.tracer.log();
+        // this.tracer.log("CloseTx");
         return true;
     }
 
