@@ -4,8 +4,13 @@ import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
+import javax.management.openmbean.KeyAlreadyExistsException;
+
+import org.lbee.store.KeyExistsException;
+import org.lbee.store.KeyNotExistsException;
 import org.lbee.store.Store;
 import org.lbee.store.Transaction;
+import org.lbee.store.ValueExistsException;
 
 /**
  * Key value store consumer
@@ -23,33 +28,54 @@ public class ClientSimple implements Callable<Boolean> {
     }
 
     @Override
-    public Boolean call() throws Exception {
+    public Boolean call() throws InterruptedException {
         boolean commitSucceed = false;
 
-        Transaction tx = store.open();
+        Transaction tx = null;
+        try {
+            tx = store.open();
+        } catch (IOException e) {
+            System.out.printf("--- No transaction for client %s.\n", guid);
+            e.printStackTrace();
+            return false;
+        }
 
         if (guid == 0) {
-            store.add(tx, "K1", "V1");
-            store.add(tx, "K2", "V2");
+            try {
+                store.add(tx, "K1", "V1");
+                store.add(tx, "K2", "V2");
+            } catch (KeyExistsException | IOException e) {
+                e.printStackTrace();
+            }
         } else {
             TimeUnit.SECONDS.sleep(2);
             String v1 = store.read("K1");
             String v2 = store.read("K2");
-            if (guid == 1) {
-                store.add(tx, "K1", v1+"-1");
-            } else {
-                store.add(tx, "K2", v2+"-2");
+            try {
+                store.add(tx, "K1" + guid, "V1" + guid);
+                if (guid == 1) {
+                    store.update(tx, "K1", v1 + "-1");
+                } else {
+                    store.update(tx, "K2", v2 + "-2");
+                }
+                TimeUnit.MILLISECONDS.sleep(100);
+                if (guid == 2) {
+                    store.update(tx, "K1", v1 + "-2");
+                } else {
+                    store.update(tx, "K2", v2 + "-1");
+                }
+            } catch (KeyExistsException | KeyNotExistsException | ValueExistsException | IOException | InterruptedException e) {
+                e.printStackTrace();
             }
-            TimeUnit.MILLISECONDS.sleep(100);
-            if (guid == 2) {
-                store.add(tx, "K1", v1+"-2");
-            } else {
-                store.add(tx, "K2", v2+"-1");
-            }
+
             TimeUnit.SECONDS.sleep(2);
         }
 
-        commitSucceed = store.close(tx);
+        try {
+            commitSucceed = store.close(tx);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         if (commitSucceed) {
             System.out.printf("--- Commit transaction %s from client %s.\n", tx, guid);
         } else {

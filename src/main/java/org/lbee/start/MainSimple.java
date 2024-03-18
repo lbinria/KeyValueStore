@@ -39,14 +39,14 @@ public class MainSimple {
         tasks.add(c3);
 
         future = pool.invokeAll(tasks);
-        // for (Future<Boolean> f : future) {
-        //     // Boolean result = null;
-        //     try {
-        //         f.get();
-        //     } catch (InterruptedException | ExecutionException e) {
-        //         e.printStackTrace();
-        //     }
-        // }
+        for (Future<Boolean> f : future) {
+            // Boolean result = null;
+            try {
+                f.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
 
         pool.shutdown();
         // pool.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
