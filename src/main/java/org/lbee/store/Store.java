@@ -107,7 +107,8 @@ public class Store {
 
         // trace
         this.traceWritten.getField(transaction.getId() + "").add(key);
-        this.tracer.log();
+        this.tracer.log("Update");
+        // this.tracer.log();
     }
 
     public void remove(Transaction transaction, String key) throws KeyNotExistsException, IOException {
@@ -159,8 +160,8 @@ public class Store {
             // trace
             this.traceTx.remove(transaction.getId() + "");
             this.traceWritten.getField(transaction.getId() + "").clear();
-            this.tracer.log();
-            // this.tracer.log("RollbackTx");
+            // this.tracer.log();
+            this.tracer.log("RollbackTx");
             return false;
         }
         // add the operation from snapshot to store
@@ -186,8 +187,8 @@ public class Store {
         // trace
         this.traceTx.remove(transaction.getId() + "");
         this.traceWritten.getField(transaction.getId() + "").clear();
-        this.tracer.log();
-        // this.tracer.log("CloseTx");
+        // this.tracer.log();
+        this.tracer.log("CloseTx");
         return true;
     }
 

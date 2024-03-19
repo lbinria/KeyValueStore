@@ -33,6 +33,13 @@ public class MainSimple {
         final ExecutorService pool = Executors.newCachedThreadPool();
         tasks.add(c1);
         Collection<Future<Boolean>> future = pool.invokeAll(tasks);
+        for (Future<Boolean> f : future) {
+            try {
+                f.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
 
         tasks.remove(c1);
         tasks.add(c2);
@@ -40,7 +47,6 @@ public class MainSimple {
 
         future = pool.invokeAll(tasks);
         for (Future<Boolean> f : future) {
-            // Boolean result = null;
             try {
                 f.get();
             } catch (InterruptedException | ExecutionException e) {
