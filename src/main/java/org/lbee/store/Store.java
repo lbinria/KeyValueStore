@@ -48,9 +48,9 @@ public class Store {
         this.snapshot = tracer.getVariableTracer("snapshotStore");
     }
 
-    public synchronized Transaction open() throws IOException, TransactionsException {
+    public synchronized Transaction open() throws IOException, TransactionException {
         if (this.nbOpenTransactions >= MAX_NB_TX) {
-            throw new TransactionsException();
+            throw new TransactionException();
         }
         Transaction transaction = new Transaction(this.lastTransactionId++ % MAX_NB_TX);
         this.nbOpenTransactions++;
