@@ -14,10 +14,12 @@ import org.lbee.instrumentation.trace.VirtualField;
 public class Store {
 
     private static final String NO_VALUE = "a value that cannot be";
+    private static final long MAX_NB_TX = 4;
 
     private final Map<String, String> store;
     private final Map<Transaction, Map<String, String>> snapshots;
     private final List<Transaction> openTransactions;
+    private long nbOpenTransactions;
     private long lastTransactionId = 0;
 
     private final Map<Transaction, Set<String>> written;
@@ -33,6 +35,7 @@ public class Store {
         this.store = new HashMap<>();
         this.snapshots = new HashMap<>();
         this.openTransactions = new ArrayList<>();
+        this.nbOpenTransactions = 0;
         this.written = new HashMap<>();
         this.missed = new HashMap<>();
     }
@@ -45,9 +48,12 @@ public class Store {
         this.snapshot = tracer.getVariableTracer("snapshotStore");
     }
 
-    public synchronized Transaction open() throws IOException {
-        // TODO: synchronize only on lastTransactionId
-        Transaction transaction = new Transaction(this.lastTransactionId++);
+    public synchronized Transaction open() throws IOException, TransactionsException {
+        if (this.nbOpenTransactions >= MAX_NB_TX) {
+            throw new TransactionsException();
+        }
+        Transaction transaction = new Transaction(this.lastTransactionId++ % MAX_NB_TX);
+        this.nbOpenTransactions++;
         openTransactions.add(transaction);
         snapshots.put(transaction, new HashMap<>());
         written.put(transaction, new HashSet<>());
@@ -152,6 +158,7 @@ public class Store {
         if (!intersection.isEmpty()) {
             // remove the transaction from the pool, snapshots, written and missed
             openTransactions.remove(transaction);
+            this.nbOpenTransactions--;
             snapshots.remove(transaction);
             written.remove(transaction);
             missed.remove(transaction);
@@ -180,6 +187,7 @@ public class Store {
         // remove the transaction from the pool, snapshots, written and missed
         openTransactions.remove(transaction);
         snapshots.remove(transaction);
+        this.nbOpenTransactions--;
         written.remove(transaction);
         missed.remove(transaction);
         System.out.println("Commit (" + transaction + "): " + snapshot);

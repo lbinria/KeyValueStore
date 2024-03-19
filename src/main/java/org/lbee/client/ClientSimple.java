@@ -10,6 +10,7 @@ import org.lbee.store.KeyExistsException;
 import org.lbee.store.KeyNotExistsException;
 import org.lbee.store.Store;
 import org.lbee.store.Transaction;
+import org.lbee.store.TransactionsException;
 import org.lbee.store.ValueExistsException;
 
 /**
@@ -35,8 +36,11 @@ public class ClientSimple implements Callable<Boolean> {
         try {
             tx = store.open();
         } catch (IOException e) {
-            System.out.printf("--- No transaction for client %s.\n", guid);
             e.printStackTrace();
+            return false;
+        } catch (TransactionsException e) {
+            System.out.printf("--- No more transaction for client %s.\n", guid);
+            // e.printStackTrace();
             return false;
         }
 

@@ -10,6 +10,7 @@ import org.lbee.store.KeyExistsException;
 import org.lbee.store.KeyNotExistsException;
 import org.lbee.store.Store;
 import org.lbee.store.Transaction;
+import org.lbee.store.TransactionsException;
 import org.lbee.store.ValueExistsException;
 
 /**
@@ -36,18 +37,28 @@ public class Client implements Callable<Boolean> {
     }
 
     @Override
-    public Boolean call() throws Exception {
+    public Boolean call() throws InterruptedException {
         boolean commitSucceed = false;
         long startTime = System.currentTimeMillis();
 
         while (true) {
             // open a new transaction
-            Transaction tx = store.open();
+            Transaction tx = null;
+            try {
+                tx = store.open();
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            } catch (TransactionsException e) {
+                System.out.printf("--- No more transaction for client %s.\n", guid);
+                e.printStackTrace();
+                return false;
+            }
             System.out.printf("-- Open a new transaction %s from client %s.\n", tx, guid);
 
             // Do some update, read, delete
             int nRequest = random.nextInt(10);
-            System.out.printf("Making %s request for %s.\n", nRequest,tx);
+            System.out.printf("Making %s request for %s.\n", nRequest, tx);
             for (int i = 0; i < nRequest; i++) {
                 this.doSomething(tx);
                 // Simulate some delay
@@ -56,7 +67,11 @@ public class Client implements Callable<Boolean> {
             System.out.printf("Done with requests for %s.\n", tx);
 
             // Try to commit
-            commitSucceed = store.close(tx);
+            try {
+                commitSucceed = store.close(tx);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             if (commitSucceed) {
                 System.out.printf("--- Commit transaction %s from client %s.\n", tx, guid);
             } else {
