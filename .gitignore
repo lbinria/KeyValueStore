@@ -126,4 +126,4 @@ trace.ndjson
 store.ndjson
 kvs.clock
 default
-JAVA/
+JAVA/*

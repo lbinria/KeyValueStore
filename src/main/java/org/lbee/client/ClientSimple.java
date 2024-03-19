@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
-import javax.management.openmbean.KeyAlreadyExistsException;
-
 import org.lbee.store.KeyExistsException;
 import org.lbee.store.KeyNotExistsException;
 import org.lbee.store.Store;
