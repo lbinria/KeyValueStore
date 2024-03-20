@@ -5,7 +5,7 @@ def run():
         "java",
         "-cp",
         "target/KeyValueStore-1.2-jar-with-dependencies.jar",
-        "org.lbee.start.MainSimple"
+        "org.lbee.start.Main"
         ])
 
     # Wait implementation is terminated

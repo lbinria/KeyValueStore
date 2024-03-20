@@ -51,7 +51,6 @@ public class Client implements Callable<Boolean> {
                 return false;
             } catch (TransactionException e) {
                 System.out.printf("--- No more transaction for client %s.\n", guid);
-                e.printStackTrace();
                 return false;
             }
             System.out.printf("-- Open a new transaction %s from client %s.\n", tx, guid);

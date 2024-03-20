@@ -14,7 +14,7 @@ import org.lbee.instrumentation.trace.VirtualField;
 public class Store {
 
     private static final String NO_VALUE = "a value that cannot be";
-    private static final long MAX_NB_TX = 10;
+    private static final long MAX_NB_TX = 5;
 
     private final Map<String, String> store;
     private final Map<Transaction, Map<String, String>> snapshots;
