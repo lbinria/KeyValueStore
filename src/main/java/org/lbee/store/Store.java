@@ -14,7 +14,7 @@ import org.lbee.instrumentation.trace.VirtualField;
 public class Store {
 
     private static final String NO_VALUE = "a value that cannot be";
-    private static final long MAX_NB_TX = 4;
+    private static final long MAX_NB_TX = 10;
 
     private final Map<String, String> store;
     private final Map<Transaction, Map<String, String>> snapshots;
@@ -86,10 +86,13 @@ public class Store {
         written.get(transaction).add(key);
 
         // trace
-        this.traceWritten.getField(transaction.getId() + "").add(key);
-        this.snapshot.getField(transaction.getId() + "").setKey(key, value);
-        this.tracer.log("Add");
-        // this.tracer.log();
+
+        synchronized (this) {
+            this.traceWritten.getField(transaction.getId() + "").add(key);
+            this.snapshot.getField(transaction.getId() + "").setKey(key, value);
+            this.tracer.log("Add");
+            // this.tracer.log();
+        }
     }
 
     public void update(Transaction transaction, String key, String value)
@@ -112,9 +115,11 @@ public class Store {
         written.get(transaction).add(key);
 
         // trace
-        this.traceWritten.getField(transaction.getId() + "").add(key);
-        this.tracer.log("Update");
-        // this.tracer.log();
+        synchronized (this) {
+            this.traceWritten.getField(transaction.getId() + "").add(key);
+            this.tracer.log("Update");
+            // this.tracer.log();
+        }
     }
 
     public void remove(Transaction transaction, String key) throws KeyNotExistsException, IOException {
@@ -134,8 +139,10 @@ public class Store {
         written.get(transaction).add(key);
 
         // trace
-        this.traceWritten.getField(transaction.getId() + "").add(key);
-        this.tracer.log();
+        synchronized (this) {
+            this.traceWritten.getField(transaction.getId() + "").add(key);
+            this.tracer.log();
+        }
     }
 
     public String read(String key) {
