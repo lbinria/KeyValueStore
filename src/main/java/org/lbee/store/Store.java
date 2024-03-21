@@ -126,11 +126,10 @@ public class Store {
         System.out.println("Remove (" + transaction + "): " + key);
 
         final Map<String, String> snapshot = snapshots.get(transaction);
-        // if key already exists because of a previous write operation
-        // (not cancelled by a remove operation) in the local snapshot
-        // or exists in the global store then, throw exception
-        if ((snapshot.containsKey(key) && !snapshot.get(key).equals(NO_VALUE))
-                || store.containsKey(key)) {
+        // if key doesn't already exist (local operation on the snapshot or
+        // in the store) throw exception
+        if (!(snapshot.containsKey(key) && !snapshot.get(key).equals(NO_VALUE))
+                && !store.containsKey(key)) {
             throw new KeyNotExistsException();
         }
         // Change value to NO_VALUE in snapshot in order
