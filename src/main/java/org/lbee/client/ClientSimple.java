@@ -44,27 +44,27 @@ public class ClientSimple implements Callable<Boolean> {
 
         if (guid == 0) {
             try {
-                store.add(tx, "K1", "V1");
-                store.add(tx, "K2", "V2");
+                store.add(tx, 1, "V1");
+                store.add(tx, 2, "V2");
             } catch (KeyExistsException | IOException e) {
                 e.printStackTrace();
             }
         } else {
             TimeUnit.SECONDS.sleep(2);
-            String v1 = store.read("K1");
-            String v2 = store.read("K2");
+            String v1 = store.read(1);
+            String v2 = store.read(2);
             try {
-                store.add(tx, "K1" + guid, "V1" + guid);
+                store.add(tx, 10 + guid, "V1" + guid);
                 if (guid == 1) {
-                    store.update(tx, "K1", v1 + "-1");
+                    store.update(tx, 1, v1 + "-1");
                 } else {
-                    store.update(tx, "K2", v2 + "-2");
+                    store.update(tx, 2, v2 + "-2");
                 }
                 TimeUnit.MILLISECONDS.sleep(100);
                 if (guid == 2) {
-                    store.update(tx, "K1", v1 + "-2");
+                    store.update(tx, 1, v1 + "-2");
                 } else {
-                    store.update(tx, "K2", v2 + "-1");
+                    store.update(tx, 2, v2 + "-1");
                 }
             } catch (KeyExistsException | KeyNotExistsException | ValueExistsException | IOException | InterruptedException e) {
                 e.printStackTrace();

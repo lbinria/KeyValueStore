@@ -29,7 +29,7 @@ import org.lbee.store.Store;
 
 public class Main {
     public static void main(String[] args) throws InterruptedException, IOException, KeyExistsException, ClockException {
-        List<String> keys = new ArrayList<>();
+        List<Integer> keys = new ArrayList<>();
         List<String> vals = new ArrayList<>();
         List<String> txIds = new ArrayList<>();
         readConfig("conf.ndjson", keys, vals, txIds);
@@ -63,31 +63,31 @@ public class Main {
         System.out.println(store);
     }
 
-    private static void readConfig(String path, List<String> keys, List<String> values, List<String> txIds)
+    private static void readConfig(String path, List<Integer> keys, List<String> values, List<String> txIds)
             throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
             String line = reader.readLine();
             if (line == null) {
-                throw new IOException("Configuration file must contains one json object. Invalid configuration file.");
+                throw new IOException("Configuration file must contain one json object. Invalid configuration file.");
             }
             JsonElement jsonLine = JsonParser.parseString(line);
             if (!jsonLine.isJsonObject()) {
-                throw new IOException("Configuration file must contains one json object. Invalid configuration file.");
+                throw new IOException("Configuration file must contain one json object. Invalid configuration file.");
             }
             JsonObject config = jsonLine.getAsJsonObject();
 
             Gson gson = new Gson();
-            Type listType = new TypeToken<List<String>>() {
-            }.getType();
-            List<String> ks = gson.fromJson(config.get("Key").getAsJsonArray(), listType);
-            for (String k : ks) {
+            Type stringListType = new TypeToken<List<String>>() {}.getType();
+            Type integerListType = new TypeToken<List<Integer>>() {}.getType();
+            List<Integer> ks = gson.fromJson(config.get("Key").getAsJsonArray(), integerListType);
+            for (Integer k : ks) {
                 keys.add(k);
             }
-            List<String> vs = gson.fromJson(config.get("Val").getAsJsonArray(), listType);
+            List<String> vs = gson.fromJson(config.get("Val").getAsJsonArray(), stringListType);
             for (String v : vs) {
                 values.add(v);
             }
-            List<String> txs = gson.fromJson(config.get("TxId").getAsJsonArray(), listType);
+            List<String> txs = gson.fromJson(config.get("TxId").getAsJsonArray(), stringListType);
             for (String t : txs) {
                 txIds.add(t);
             }

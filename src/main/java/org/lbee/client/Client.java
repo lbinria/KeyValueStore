@@ -22,13 +22,13 @@ public class Client implements Callable<Boolean> {
     // Store used by client
     private final Store store;
     // potential keys and values
-    List<String> keys;
+    List<Integer> keys;
     List<String> values;
     // Random used to make some stochastic behavior
     private final Random random;
     private static int nbc = 0;
 
-    public Client(Store store, List<String> keys, List<String> values) throws IOException {
+    public Client(Store store, List<Integer> keys, List<String> values) throws IOException {
         this.guid = nbc++;
         this.store = store;
         this.keys = keys;
@@ -90,7 +90,7 @@ public class Client implements Callable<Boolean> {
         // pick an action for read, add, replace, remove
         final int actionNumber = random.nextInt(0, 99);
         // Choose a random key from the list of keys
-        String key = keys.get(random.nextInt(0, keys.size()));
+        Integer key = keys.get(random.nextInt(0, keys.size()));
 
         // Read: 20% chance
         if (actionNumber <= 19) {
@@ -100,7 +100,7 @@ public class Client implements Callable<Boolean> {
         else if (actionNumber <= 95) {
             // Choose a value randomly
             String val = values.get(random.nextInt(0, values.size()));
-            if (actionNumber % 5 != 0) {
+            if (actionNumber % 5 == 0) {
                 try {
                     store.add(tx, key, val);
                 } catch (KeyExistsException e) {
