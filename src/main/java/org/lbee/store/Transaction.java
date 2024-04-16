@@ -14,6 +14,6 @@ public class Transaction {
     // print transaction
     @Override
     public String toString() {
-        return "T_" + id;
+        return "" + id;
     }
 }

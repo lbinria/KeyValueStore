@@ -18,8 +18,8 @@ def run_tla(trace_spec,trace="trace.ndjson",config="conf.ndjson"):
         "-XX:+UseParallelGC",
         "-cp",
         tla_cp,
-        "tlc2.TLC",
-        trace_spec])
+        "tlc2.TLC", 
+        trace_spec]) 
     tla_trace_validation_process.wait()
     tla_trace_validation_process.terminate()
 

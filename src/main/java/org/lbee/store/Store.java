@@ -14,7 +14,8 @@ import org.lbee.instrumentation.trace.VirtualField;
 public class Store {
 
     private static final String NO_VALUE = "a value that cannot be";
-    private static final long MAX_NB_TX = 5;
+    // Maximum number of transactions (better be consistent with conf file)
+    private static final long MAX_NB_TX = 10;  
 
     private final Map<Integer, String> store;
     private final Map<Transaction, Map<Integer, String>> snapshots;
@@ -65,8 +66,9 @@ public class Store {
         this.traceTx.add(transaction.getId() + "");
         // either the "OpenTx" or the "CloseTx" should be specified to
         // detect wrong commits
+        this.tracer.log("OpenTx", new Object[] { transaction.toString() });
         // this.tracer.log("OpenTx");
-        this.tracer.log();
+        // this.tracer.log();
 
         return transaction;
     }
@@ -91,8 +93,8 @@ public class Store {
         synchronized (this) {
             this.traceWritten.getField(transaction.getId() + "").add(key);
             this.snapshot.getField(transaction.getId() + "").setKey(key, value);
-            // this.tracer.log("Add");
-            this.tracer.log();
+            this.tracer.log("Add", new Object[] { transaction.toString(), key.intValue(), value});
+            // this.tracer.log();
         }
     }
 
@@ -119,8 +121,8 @@ public class Store {
         synchronized (this) {
             this.traceWritten.getField(transaction.getId() + "").add(key);
             this.snapshot.getField(transaction.getId() + "").setKey(key, value);
-            // this.tracer.log("Update");
-            this.tracer.log();
+            this.tracer.log("Update", new Object[] { transaction.toString(), key.intValue(), value});
+            // this.tracer.log();
         }
     }
 
@@ -142,7 +144,8 @@ public class Store {
         // trace
         synchronized (this) {
             this.traceWritten.getField(transaction.getId() + "").add(key);
-            this.tracer.log();
+            this.tracer.log("Remove", new Object[] { transaction.toString(), key.intValue()});
+            // this.tracer.log();
         }
     }
 
@@ -175,8 +178,8 @@ public class Store {
             // trace
             this.traceTx.remove(transaction.getId() + "");
             this.traceWritten.getField(transaction.getId() + "").clear();
-            this.tracer.log();
-            // this.tracer.log("RollbackTx");
+            this.tracer.log("RollbackTx", new Object[] { transaction.toString()});
+            // this.tracer.log();
             return false;
         }
         // add the operation from snapshot to store
@@ -203,8 +206,8 @@ public class Store {
         // trace
         this.traceTx.remove(transaction.getId() + "");
         this.traceWritten.getField(transaction.getId() + "").clear();
-        this.tracer.log();
-        // this.tracer.log("CloseTx");
+        this.tracer.log("CloseTx", new Object[] { transaction.toString()});
+        // this.tracer.log();
         return true;
     }
 

@@ -21,6 +21,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.lbee.client.Client;
+import org.lbee.client.ClientDet;
+import org.lbee.client.ClientInit;
 import org.lbee.instrumentation.clock.ClockException;
 import org.lbee.instrumentation.clock.ClockFactory;
 import org.lbee.instrumentation.trace.TLATracer;
@@ -39,15 +41,32 @@ public class Main {
         Store store = new Store(tracer);
 
         final Collection<Callable<Boolean>> tasks = new HashSet<>();
-        for (int i = 0; i < 8; i++) {
-            final Client c = new Client(store, keys, vals);
+
+        // use ClientInit to initialize the store and then ClientDet to run the tests
+        // ClientDet is the similar to Client but with less exceptions (doesn't perform add operations)
+        final ClientInit ci = new ClientInit(store, keys, vals);
+        final ExecutorService poolInit = Executors.newCachedThreadPool();
+        tasks.add(ci);
+        Collection<Future<Boolean>> future = poolInit.invokeAll(tasks);
+        for (Future<Boolean> f : future) {
+            try {
+                f.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
+        tasks.remove(ci);
+
+        for (int i = 0; i < 12; i++) {
+            // final Client c = new Client(store, keys, vals);
+            final ClientDet c = new ClientDet(store, keys, vals);
             System.out.printf("Create new client.\n");
             tasks.add(c);
         }
 
         // Run all tasks concurrently.
         final ExecutorService pool = Executors.newCachedThreadPool();
-        Collection<Future<Boolean>> future = pool.invokeAll(tasks);
+        future = pool.invokeAll(tasks);
         for (Future<Boolean> f : future) {
             // Boolean result = null;
             try {
