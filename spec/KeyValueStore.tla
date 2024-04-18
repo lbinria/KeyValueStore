@@ -20,7 +20,7 @@ vars == <<store, tx, snapshotStore, written, missed>>
 
 NoVal ==    \* Choose something to represent the absence of a value.
     CHOOSE v : v \notin Val
-
+    
 Store ==    \* The set of all key-value stores.
     [Key -> Val \cup {NoVal}]
 

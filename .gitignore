@@ -28,6 +28,8 @@ hs_err_pid*
 ### TLA ###
 states/
 *.bin
+*.out
+spec/*.out
 
 ### Intellij ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm
@@ -110,3 +112,18 @@ modules.xml
 
 # Sonarlint plugin
 .idea/sonarlint
+
+# cache
+__pycache__
+.DS_Store
+
+# VScode
+.vscode/
+
+# temporary trace and clock
+Traces/
+trace.ndjson
+store.ndjson
+kvs.clock
+default
+JAVA/*
