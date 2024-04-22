@@ -6,6 +6,19 @@
 #### DFS (for 10 keys, 20 values)
 `KeyValueStore/spec > TRACE_PATH=../BenchMarks/trace.ndjson.4C.VEA CONFIG_PATH=../BenchMarks/conf.10-20-5.ndjson java -XX:+UseParallelGC -Dtlc2.tool.queue.IStateQueue=StateDeque  -cp '/Users/cirstea/bin/TLA/tla2tools.jar' tlc2.TLC -note  KeyValueStoreTrace.tla`
 
+#### Script
+
+Alternatively, run the script `tla_trace_validation.py` on one of the trace files (the trace file should be consistent with the conf file:
+`trace.ndjson.4RM.VEA` with  `conf.4RM.ndjson`).
+
+- BFS 
+
+`KeyValueStore > python tla_trace_validation.py --trace BenchMarks/trace.ndjson.8C.VpEA --config BenchMarks/conf.10-20-5.ndjson spec/KeyValueStoreTrace.tla`
+
+- DFS 
+
+`KeyValueStore > python tla_trace_validation.py -dfs --trace BenchMarks/trace.ndjson.8C.VpEA --config BenchMarks/conf.10-20-5.ndjson spec/KeyValueStoreTrace.tla`
+
 ### Benchmarks
 
 #### 4 agents - 10 keys, 20 values, 10 transactions
